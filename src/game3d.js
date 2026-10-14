@@ -25,7 +25,7 @@ const state = {
   mode: 1, duration: 120, remaining: 120, homeScore: 0, awayScore: 0,
   running: false, paused: false, ended: false, lastTime: 0, careerSaved: false, matchGoals: 0,
   keys: new Set(), touch: new Set(), players: [], ball: null,
-  carrier: null, shotCooldown: 0, hintCooldown: 0, elapsed: 0
+  carrier: null, shotCooldown: 0, aiActionCooldown: 0, hintCooldown: 0, elapsed: 0
 };
 let scene, camera, renderer, clock, courtGroup, ballMesh, ballShadow, targetMeshes = [], activeVenue = null;
 let audioContext = null;
@@ -413,9 +413,16 @@ function shoot(player, power) {
   state.carrier = null; b.x = player.root.position.x; b.z = player.root.position.z - (player.team === "home" ? .45 : -.45); b.y = .42;
   const targetZ = player.team === "home" ? -COURT.halfL + .15 : COURT.halfL - .15;
   const tx = player.team === "home" ? awayTarget.position.x : homeTarget.position.x;
-  const dx = tx - b.x, dz = targetZ - b.z, len = Math.hypot(dx, dz) || 1;
-  b.vx = (dx / len) * power + player.vx * .32; b.vz = (dz / len) * power + player.vz * .32;
-  b.vy = power > 8 ? 2.8 : 1.25; b.spin = 12; b.lastTeam = player.team; state.shotCooldown = .24;
+  const dx = tx - b.x, dz = targetZ - b.z, distance = Math.hypot(dx, dz), len = distance || 1;
+  // Calibrate the launch arc to reach the target brick instead of dropping to
+  // ground level long before the ball reaches the end wall.
+  const shotPower = Math.max(power * 1.28, 13.2);
+  const flightTime = Math.max(.12, distance / shotPower);
+  const launchVelocityY = (1.05 - b.y + 4.9 * flightTime * flightTime) / flightTime;
+  b.vx = (dx / len) * shotPower + player.vx * .22;
+  b.vz = (dz / len) * shotPower + player.vz * .22;
+  b.vy = THREE.MathUtils.clamp(launchVelocityY, 2.6, 12.5);
+  b.spin = 12; b.lastTeam = player.team; state.shotCooldown = .24;
   player.kickFlash = .22; setHint(player.team === "home" ? "STRIKE IT! AIM FOR THE MARKED BRICK." : "THE CHALLENGERS HAVE A SHOT.");
 }
 function passBall(player) {
@@ -479,6 +486,13 @@ function updatePlayer(p, dt) {
   let dx = 0, dz = 0, speed = p.speed;
   if (p.isUser) {
     const v = inputVector(); dx = v.x; dz = v.z;
+    const pressing = state.keys.has("s") || state.touch.has("action");
+    // Holding pressure closes down a carrier when the user is not steering.
+    if (pressing && state.carrier && state.carrier.team !== p.team && Math.hypot(dx, dz) < .1) {
+      const rx = state.carrier.root.position.x - pos.x, rz = state.carrier.root.position.z - pos.z;
+      const rl = Math.hypot(rx, rz);
+      if (rl > .1) { dx = rx / rl; dz = rz / rl; speed *= .72; }
+    }
     if (state.keys.has("e") || state.keys.has("shift") || state.touch.has("sprint")) speed *= 1.42;
   } else {
     const b = state.ball;
@@ -521,6 +535,43 @@ function updatePlayer(p, dt) {
   if (!state.carrier && Math.hypot(pos.x - state.ball.x, pos.z - state.ball.z) < .72 && state.ball.y < 1.1) {
     state.carrier = p; state.ball.vx = 0; state.ball.vz = 0; state.ball.vy = 0;
     if (p.isUser) setHint("BALL AT YOUR FEET — FIND THE BRICK.");
+  }
+}
+function resolvePlayerCollisions() {
+  // Players contest space instead of walking through one another.
+  const minDistance = .78;
+  for (let i = 0; i < state.players.length; i++) {
+    for (let j = i + 1; j < state.players.length; j++) {
+      const a = state.players[i], b = state.players[j];
+      let dx = b.root.position.x - a.root.position.x;
+      let dz = b.root.position.z - a.root.position.z;
+      let distance = Math.hypot(dx, dz);
+      if (distance >= minDistance) continue;
+      if (distance < .001) { dx = .01; dz = .01; distance = Math.hypot(dx, dz); }
+      const nx = dx / distance, nz = dz / distance;
+      const overlap = (minDistance - distance) * .5;
+      a.root.position.x -= nx * overlap; a.root.position.z -= nz * overlap;
+      b.root.position.x += nx * overlap; b.root.position.z += nz * overlap;
+      a.root.position.x = THREE.MathUtils.clamp(a.root.position.x, -COURT.halfW + 1.05, COURT.halfW - 1.05);
+      b.root.position.x = THREE.MathUtils.clamp(b.root.position.x, -COURT.halfW + 1.05, COURT.halfW - 1.05);
+      a.root.position.z = THREE.MathUtils.clamp(a.root.position.z, -COURT.halfL + 1.15, COURT.halfL - 1.15);
+      b.root.position.z = THREE.MathUtils.clamp(b.root.position.z, -COURT.halfL + 1.15, COURT.halfL - 1.15);
+    }
+  }
+}
+function updateAIAction(dt) {
+  state.aiActionCooldown = Math.max(0, state.aiActionCooldown - dt);
+  const carrier = state.carrier;
+  if (!state.running || state.paused || !carrier || carrier.isUser || state.aiActionCooldown > 0) return;
+  const targetZ = carrier.team === "home" ? -COURT.halfL + .15 : COURT.halfL - .15;
+  const targetX = carrier.team === "home" ? awayTarget.position.x : homeTarget.position.x;
+  const distanceToTarget = Math.hypot(targetX - state.ball.x, targetZ - state.ball.z);
+  const opponent = nearestPlayer(carrier.root.position.x, carrier.root.position.z, carrier.team === "home" ? "away" : "home");
+  const pressureDistance = opponent ? Math.hypot(opponent.root.position.x - carrier.root.position.x, opponent.root.position.z - carrier.root.position.z) : Infinity;
+  // CPU carriers must finish attacks; otherwise they can dribble to the wall forever.
+  if (distanceToTarget < 10.5 || pressureDistance < 1.25) {
+    shoot(carrier, 10.5);
+    state.aiActionCooldown = 1.0;
   }
 }
 function updateBall(dt) {
@@ -576,6 +627,14 @@ function animate() {
     state.shotCooldown = Math.max(0, state.shotCooldown - dt);
     state.hintCooldown = Math.max(0, state.hintCooldown - dt);
     state.players.forEach(p => updatePlayer(p, dt));
+    resolvePlayerCollisions();
+    const user = state.players.find(p => p.isUser);
+    const pressing = state.keys.has("s") || state.touch.has("action");
+    if (pressing && user && state.carrier && state.carrier.team !== user.team && user.tackleCooldown <= 0) {
+      const pressureDistance = Math.hypot(user.root.position.x - state.carrier.root.position.x, user.root.position.z - state.carrier.root.position.z);
+      if (pressureDistance < 1.65) pressBall(user);
+    }
+    updateAIAction(dt);
     updateBall(dt); updateCamera(dt);
     if (state.remaining <= 0) endMatch();
   } else if (state.players.length) updateCamera(dt);
@@ -624,7 +683,7 @@ document.addEventListener("keydown", event => {
   if (key === "escape") { togglePause(); return; }
   state.keys.add(key);
   if (key === "a") handleAction("shoot");
-  if (key === "s" && !state.keys.has("ArrowDown")) handleAction("action");
+  if (key === "s" && state.carrier === state.players.find(p => p.isUser)) handleAction("action");
   if (key === "d") handleAction("shove");
   if (key === " " || key === "f") handleAction("feint");
   if (key === "c") handleAction("celebrate");
@@ -640,7 +699,21 @@ ui.playAgain.addEventListener("click", startMatch);
 ui.resultMenu.addEventListener("click", returnToMenu);
 document.querySelectorAll("[data-control]").forEach(button => {
   const control = button.dataset.control;
-  if (["up", "down", "left", "right", "sprint"].includes(control)) {
+  if (control === "action") {
+    const down = event => {
+      event.preventDefault();
+      const user = state.players.find(p => p.isUser);
+      if (state.carrier === user) handleAction("action");
+      else state.touch.add("action");
+      button.classList.add("is-active");
+    };
+    const up = event => { event.preventDefault(); state.touch.delete("action"); button.classList.remove("is-active"); };
+    button.addEventListener("pointerdown", down);
+    button.addEventListener("pointerup", up);
+    button.addEventListener("pointercancel", up);
+    button.addEventListener("lostpointercapture", up);
+    button.addEventListener("contextmenu", event => event.preventDefault());
+  } else if (["up", "down", "left", "right", "sprint"].includes(control)) {
     const down = event => { event.preventDefault(); state.touch.add(control); button.classList.add("is-active"); };
     const up = event => { event.preventDefault(); state.touch.delete(control); button.classList.remove("is-active"); };
     button.addEventListener("pointerdown", down);
