@@ -113,6 +113,12 @@ export function addNeighborhood(THREE, scene) {
   house(16.4, 20.0, 7.0, 5.3, 5.5, 1, -1);
   house(-19.6, -7.0, 4.8, 6.6, 3.9, 4, 1);
   house(19.5, 7.0, 4.9, 6.2, 4.3, 2, -1);
+  // Extra close-set compound houses sit just beyond the touchlines, high enough
+  // to remain visible above the court walls from the gameplay camera.
+  house(-14.4, -8.0, 4.6, 5.2, 6.2, 1, 1);
+  house(14.4, -8.0, 4.6, 5.2, 6.2, 3, 1);
+  house(-14.4, 8.0, 4.6, 5.2, 6.2, 0, 1);
+  house(14.4, 8.0, 4.6, 5.2, 6.2, 2, 1);
 
   // Painted compound walls, gate posts and a few patched sections.
   for (const side of [-1, 1]) {
@@ -200,7 +206,8 @@ export function addNeighborhood(THREE, scene) {
   // above the brickwork and give the match a local crowd silhouette.
   function spectator(x, z, colorIndex, scale = 1) {
     const g = new THREE.Group();
-    g.position.set(x, 0, z);
+    // Raise the crowd slightly so heads and shoulders clear the 3.2m wall.
+    g.position.set(x, 1.9, z);
     g.scale.setScalar(scale);
     root.add(g);
     cylinder(g, .17, .19, .58, m.shirt[colorIndex % m.shirt.length], [0, 1.25, 0], 7);
