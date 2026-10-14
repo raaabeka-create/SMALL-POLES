@@ -180,9 +180,12 @@ function addStreetDetails() {
 function createPlayer(team, index) {
   const root = new THREE.Group();
   const selectedKit = document.querySelector("#kitColor")?.value || "#21884b";
+  const isUser = team === "home" && index === 0;
   const shirtColor = team === "home" ? selectedKit : (index === 0 ? "#c93832" : "#e85a48");
   const shirt = mat(shirtColor), shorts = mat(team === "home" ? "#202e25" : "#302427");
-  const skin = mat(["#7b4a2e", "#965b38", "#633a27", "#a76a43"][(index + (team === "away" ? 1 : 0)) % 4]);
+  const skinOptions = ["#7b4a2e", "#965b38", "#633a27", "#a76a43"];
+  const selectedSkin = document.querySelector("#skinTone")?.value || "#965b38";
+  const skin = mat(isUser ? selectedSkin : skinOptions[(index + (team === "away" ? 1 : 0)) % skinOptions.length]);
   const socks = mat(team === "home" ? "#f2ead4" : "#f0d7c8"), boot = mat("#191b18");
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(.31, .48, 4, 8), shirt);
   torso.position.y = 1.08; torso.castShadow = true; root.add(torso);
@@ -204,6 +207,19 @@ function createPlayer(team, index) {
   // Team-colour shoulder stripe and a tiny number on the back.
   const stripe = new THREE.Mesh(new THREE.BoxGeometry(.5, .075, .33), mat(team === "home" ? "#f1cc3b" : "#f4eee0"));
   stripe.position.set(0, 1.25, .16); root.add(stripe);
+  if (isUser) {
+    const streetName = (document.querySelector("#playerName")?.value || "PLAYER").trim().slice(0, 14).toUpperCase() || "PLAYER";
+    const nameTexture = makeTexture((ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(16, 20, 15, .88)";
+      ctx.beginPath(); ctx.roundRect(10, 14, w - 20, h - 28, 18); ctx.fill();
+      ctx.strokeStyle = "#f1cc3b"; ctx.lineWidth = 5; ctx.stroke();
+      ctx.fillStyle = "#fff9e8"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.font = "900 46px system-ui, sans-serif"; ctx.fillText(streetName, w / 2, h / 2 + 2, w - 42);
+    }, 512, 128);
+    const nameTag = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTexture, transparent: true, depthWrite: false }));
+    nameTag.scale.set(2.2, .55, 1); nameTag.position.set(0, 2.42, 0); root.add(nameTag);
+  }
   scene.add(root);
   const player = {
     team, index, root, armPivots, legPivots, speed: team === "home" && index === 0 ? 5.1 : 4.1,
