@@ -343,7 +343,7 @@ function resetMatch() {
   state.duration = Number($("#matchDuration")?.value || 120);
   state.remaining = state.duration; state.homeScore = 0; state.awayScore = 0; state.matchGoals = 0; state.careerSaved = false;
   state.running = true; state.paused = false; state.ended = false; state.elapsed = 0;
-  state.keys.clear(); state.touch.clear(); state.carrier = null; state.shotCooldown = 0;
+  state.keys.clear(); state.touch.clear(); state.carrier = null; state.shotCooldown = 0; state.aiActionCooldown = 0;
   if (state.players.length) state.players.forEach(p => scene.remove(p.root));
   state.players = [];
   for (let i = 0; i < state.mode; i++) state.players.push(createPlayer("home", i));
