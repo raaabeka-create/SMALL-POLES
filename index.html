@@ -110,11 +110,22 @@
         </div>
 
         <div class="action-buttons" id="actionButtons" aria-label="Player actions">
-          <button type="button" class="action-button pass-action" data-control="action"><span aria-hidden="true">↗</span><strong id="actionLabel">PASS / PRESS</strong><small>S · HOLD TO PRESS</small></button>
+          <button type="button" class="action-button pass-action" data-control="action"><span aria-hidden="true">↗</span><strong id="actionLabel">PASS / PRESS</strong><small id="actionHint">S · HOLD</small></button>
           <button type="button" class="action-button sprint-action" data-control="sprint"><span aria-hidden="true">⚡</span><strong>SPRINT</strong><small>E · HOLD</small></button>
           <button type="button" class="action-button shoot-action" data-control="shoot"><span aria-hidden="true">●</span><strong>SHOOT</strong><small>A</small></button>
           <button type="button" class="action-button shove-action" data-control="shove"><span aria-hidden="true">✊</span><strong>SHOVE</strong><small>D</small></button>
           <button type="button" class="action-button celebrate-action" data-control="celebrate"><span aria-hidden="true">✦</span><strong>CELEBRATE</strong><small>C</small></button>
+        </div>
+        <div class="touch-controls" aria-label="Touch movement controls">
+          <div class="touch-pad" aria-label="Move player">
+            <button type="button" data-control="up" aria-label="Move up">▲</button>
+            <div class="touch-pad-row">
+              <button type="button" data-control="left" aria-label="Move left">◀</button>
+              <button type="button" data-control="down" aria-label="Move down">▼</button>
+              <button type="button" data-control="right" aria-label="Move right">▶</button>
+            </div>
+          </div>
+          <p class="touch-movement-note">Hold directions to move. Combine two directions to move diagonally.</p>
         </div>
       </section>
 
