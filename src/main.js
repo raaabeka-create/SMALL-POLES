@@ -75,6 +75,9 @@ const state = {
   possessionId: null,
   passTargetId: null,
   pressProgress: 0,
+  crowdLine: "CHAALE! WELCOME TO THE COURT",
+  crowdLineTimer: 3,
+  lastFeint: -10,
   lastGoal: -10,
   goalFlash: 0,
   celebrationFlash: 0,
@@ -140,7 +143,9 @@ function makePlayer(team, index, count) {
     shirtNumber: index + 1,
     celebrate: 0,
     tackleCooldown: 0,
-    aiActionCooldown: 0
+    aiActionCooldown: 0,
+    dribblePhase: Math.random() * Math.PI * 2,
+    feintTimer: 0
   };
 }
 
@@ -159,6 +164,9 @@ function resetMatch(mode, duration) {
   state.possessionId = null;
   state.passTargetId = null;
   state.pressProgress = 0;
+  state.crowdLine = "CHAALE! WELCOME TO THE COURT";
+  state.crowdLineTimer = 3;
+  state.lastFeint = -10;
   state.lastGoal = -10;
   state.goalFlash = 0;
   state.celebrationFlash = 0;
@@ -272,24 +280,12 @@ function finishMatch() {
 
 function scoreGoal(scoringTeam) {
   if (state.elapsed - state.lastGoal < 0.85) return;
-  state.lastGoal = state.elapsed;
-  state.goalFlash = 0.95;
-  state.celebrationFlash = 1.1;
-  state.players.forEach(function (p) {
-    if (p.team === scoringTeam) p.celebrate = 1.3;
-  });
-  if (scoringTeam === "home") {
-    state.homeScore += 1;
-    matchHint.textContent = "POLES! You hit the marked brick. The whole court knows.";
-  } else {
-    state.awayScore += 1;
-    matchHint.textContent = "They hit the pole. Get the ball back and answer.";
-  }
-  updateHud();
-  resetPositions();
+  state.lastGoal = state.elapsed; state.goalFlash = 0.95; state.celebrationFlash = 1.1;
+  state.players.forEach(function (p) { if (p.team === scoringTeam) p.celebrate = 1.3; });
+  if (scoringTeam === "home") { state.homeScore += 1; matchHint.textContent = "POLES! You hit the marked brick. The whole court knows."; setCrowdLine("YƐƐS! POLES! THE COURT IS YOURS!", 3.2); }
+  else { state.awayScore += 1; matchHint.textContent = "They hit the pole. Get the ball back and answer."; setCrowdLine("EI! THEY HIT THE BRICK! ANSWER THEM!", 3.2); }
+  updateHud(); resetPositions();
 }
-
-
 function getUserDirection(){let x=0,y=0;if(state.keys.has("ArrowLeft")||state.touch.has("left"))x-=1;if(state.keys.has("ArrowRight")||state.touch.has("right"))x+=1;if(state.keys.has("ArrowUp")||state.touch.has("up"))y-=1;if(state.keys.has("ArrowDown")||state.touch.has("down"))y+=1;return normalize(x,y);}
 
 function getFacing(player) {
@@ -306,8 +302,8 @@ function userShoot(){
  attachBallToCarrier();const inputDirection=getUserDirection();let direction;
  if(Math.hypot(inputDirection.x,inputDirection.y)>0.1)direction=normalize(Math.max(0.28,inputDirection.x+0.52),inputDirection.y*0.9);
  else direction=normalize(WIDTH-WALL-state.ball.x,HEIGHT/2-state.ball.y);
- state.possessionId=null;state.passTargetId=null;state.ball.vx=direction.x*590+player.vx*0.48;state.ball.vy=direction.y*590+player.vy*0.48;
- state.lastShot=state.elapsed;player.facingX=direction.x;player.facingY=direction.y;matchHint.textContent="Shot fired. Use the angle to bend it toward the marked brick.";
+ state.possessionId=null;state.passTargetId=null;state.ball.vx=direction.x*590+player.vx*0.48;state.ball.vy=direction.y*590+player.vy*0.48;state.ball.spin=clamp((player.vy*0.0015)+(inputDirection.y*0.22),-0.55,0.55);
+ state.lastShot=state.elapsed;player.facingX=direction.x;player.facingY=direction.y;matchHint.textContent="Shot fired. Use the angle to bend it toward the marked brick.";setCrowdLine("GO ON! HIT THAT BRICK!",1.4);
 }
 
 
@@ -322,7 +318,7 @@ function userPass(){
  if(teammate){direction=normalize(teammate.x+teammate.vx*0.22-state.ball.x,teammate.y+teammate.vy*0.22-state.ball.y);state.passTargetId=teammate.id;matchHint.textContent="Pass played. Your teammate will control it unless a defender intercepts.";}
  else{direction=normalize(WIDTH-WALL-state.ball.x,HEIGHT/2-state.ball.y);state.passTargetId=null;matchHint.textContent="No teammate in 1v1 — quick pass into space.";}
  state.possessionId=null;const passSpeed=teammate?clamp(distance(player,teammate)*1.15,300,430):330;
- state.ball.vx=direction.x*passSpeed+player.vx*0.25;state.ball.vy=direction.y*passSpeed+player.vy*0.25;state.lastPass=state.elapsed;player.facingX=direction.x;player.facingY=direction.y;
+ state.ball.vx=direction.x*passSpeed+player.vx*0.25;state.ball.vy=direction.y*passSpeed+player.vy*0.25;state.ball.spin=clamp(direction.y*0.18,-0.3,0.3);state.lastPass=state.elapsed;player.facingX=direction.x;player.facingY=direction.y;
 }
 
 function userCelebrate() {
@@ -332,6 +328,7 @@ function userCelebrate() {
   player.celebrate = 1.2;
   state.celebrationFlash = 0.55;
   matchHint.textContent = "Big talk! Now hit the pole.";
+  setCrowdLine("YƐƐS! LET THE WHOLE AREA HEAR YOU!", 1.8);
 }
 
 
@@ -394,31 +391,75 @@ function updatePlayers(dt){
 }
 
 
-function getPlayerById(id){return state.players.find(function(p){return p.id===id;})||null;}
-function attachBallToCarrier(){
- const carrier=getPlayerById(state.possessionId);if(!carrier){state.possessionId=null;return;}
- const facing=normalize(carrier.facingX,carrier.facingY),direction=Math.hypot(facing.x,facing.y)>0.1?facing:{x:carrier.team==="home"?1:-1,y:0},offset=carrier.radius+BALL_RADIUS+2;
- state.ball.x=clamp(carrier.x+direction.x*offset,WALL+BALL_RADIUS,WIDTH-WALL-BALL_RADIUS);state.ball.y=clamp(carrier.y+direction.y*offset,WALL+BALL_RADIUS,HEIGHT-WALL-BALL_RADIUS);
- state.ball.vx=carrier.vx*0.92;state.ball.vy=carrier.vy*0.92;
+function getPlayerById(id) { return state.players.find(function (p) { return p.id === id; }) || null; }
+
+function setCrowdLine(message, duration) { state.crowdLine = message; state.crowdLineTimer = duration || 2; }
+
+function userFeint() {
+  if (state.phase !== "playing") return;
+  const user = state.players.find(function (p) { return p.isUser; });
+  if (!user || state.possessionId !== user.id) { matchHint.textContent = "A feint needs close control — win the ball first."; return; }
+  if (state.elapsed - state.lastFeint < 1.05) return;
+  const movement = getUserDirection(), facing = normalize(user.facingX, user.facingY);
+  const base = Math.hypot(movement.x, movement.y) > 0.1 ? movement : facing;
+  const side = Math.floor(state.elapsed * 10) % 2 === 0 ? 1 : -1;
+  const cut = normalize(base.x * 0.35 - base.y * side, base.y * 0.35 + base.x * side);
+  user.vx += cut.x * 170; user.vy += cut.y * 170; user.facingX = base.x; user.facingY = base.y;
+  user.feintTimer = 0.48; user.dribblePhase += Math.PI * 0.85; state.lastFeint = state.elapsed; state.celebrationFlash = 0.18;
+  matchHint.textContent = "SKILL! Cut past them, chale — then find the pole."; setCrowdLine("CHAALE! SHOW THEM YOUR FEET!", 1.8);
+}
+
+function attachBallToCarrier() {
+  const carrier = getPlayerById(state.possessionId);
+  if (!carrier) { state.possessionId = null; return; }
+  const facing = normalize(carrier.facingX, carrier.facingY);
+  const direction = Math.hypot(facing.x, facing.y) > 0.1 ? facing : { x: carrier.team === "home" ? 1 : -1, y: 0 };
+  const speed = Math.hypot(carrier.vx, carrier.vy);
+  const sprinting = carrier.isUser && (state.keys.has("KeyE") || state.keys.has("ShiftLeft") || state.keys.has("ShiftRight") || state.touch.has("sprint"));
+  const stride = speed > 35 ? Math.sin(carrier.dribblePhase || 0) * (sprinting ? 5 : 3) : 0;
+  const lateral = { x: -direction.y, y: direction.x }, offset = carrier.radius + BALL_RADIUS + 1 + (speed > 80 ? 2 : 0);
+  state.ball.x = clamp(carrier.x + direction.x * offset + lateral.x * stride, WALL + BALL_RADIUS, WIDTH - WALL - BALL_RADIUS);
+  state.ball.y = clamp(carrier.y + direction.y * offset + lateral.y * stride, WALL + BALL_RADIUS, HEIGHT - WALL - BALL_RADIUS);
+  state.ball.vx = carrier.vx * 0.88; state.ball.vy = carrier.vy * 0.88;
 }
 function acquireBall(player,message){
  state.possessionId=player.id;state.passTargetId=null;state.pressProgress=0;
  player.facingX=player.team==="home"?Math.max(0.35,player.facingX):Math.min(-0.35,player.facingX);if(message)matchHint.textContent=message;attachBallToCarrier();
 }
-function attemptSteal(defender,carrier,strength){
- if(!defender||!carrier||defender.team===carrier.team||state.possessionId!==carrier.id)return false;
- if(state.elapsed-state.lastTackle<0.45||distance(defender,carrier)>56)return false;
- state.lastTackle=state.elapsed;defender.tackleCooldown=0.7;const toward=normalize(carrier.x-defender.x,carrier.y-defender.y);
- carrier.vx+=toward.x*125;carrier.vy+=toward.y*125;defender.vx-=toward.x*70;defender.vy-=toward.y*70;
- const successChance=clamp(strength-distance(defender,carrier)/150+(defender.vx*toward.x+defender.vy*toward.y)/500,0.18,0.88);
- if(Math.random()<successChance){acquireBall(defender,defender.isUser?"Clean tackle! You won possession.":"The ball has been stolen. Press back!");return true;}
- matchHint.textContent=defender.isUser?"Shoulder challenge — stay close and press again.":"The carrier shrugged off the challenge.";return false;
+function attemptSteal(defender, carrier, strength) {
+  if (!defender || !carrier || defender.team === carrier.team || state.possessionId !== carrier.id) return false;
+  const range = strength >= 0.86 ? 66 : 58;
+  if ((defender.tackleCooldown || 0) > 0 || distance(defender, carrier) > range) return false;
+  defender.tackleCooldown = strength >= 0.86 ? 0.9 : 0.72;
+  const toward = normalize(carrier.x - defender.x, carrier.y - defender.y);
+  const facing = normalize(defender.facingX, defender.facingY);
+  const alignment = facing.x * toward.x + facing.y * toward.y;
+  const balancePenalty = Math.hypot(carrier.vx, carrier.vy) > 190 ? 0.12 : 0;
+  const feintPenalty = carrier.feintTimer > 0 ? 0.28 : 0;
+  const chance = clamp(strength + alignment * 0.16 - distance(defender, carrier) / 190 - balancePenalty - feintPenalty, 0.12, 0.86);
+  carrier.vx += toward.x * 145; carrier.vy += toward.y * 145;
+  defender.vx += toward.x * 88; defender.vy += toward.y * 88;
+  if (Math.random() < chance) {
+    acquireBall(defender, defender.isUser ? "Clean tackle! CHAALE, you won the ball!" : "Ball stolen! Get it back!");
+    setCrowdLine("EI! WHAT A CLEAN TACKLE!", 2.2); return true;
+  }
+  matchHint.textContent = defender.isUser ? "Shoulder challenge — face the carrier and time the next one." : "The carrier rode that challenge.";
+  setCrowdLine("OOF! STRONG SHOULDER, NO BALL.", 1.5); return false;
 }
-function updatePressing(dt){
- const user=state.players.find(function(p){return p.isUser;}),carrier=getPlayerById(state.possessionId),pressing=state.keys.has("KeyS")||state.touch.has("press");
- if(!user||!carrier||carrier.team===user.team||!pressing){state.pressProgress=Math.max(0,state.pressProgress-dt*1.7);return;}
- const d=distance(user,carrier);if(d<=76){state.pressProgress+=dt*(d<43?1.5:0.8);if(state.pressProgress>=0.95){state.pressProgress=0;attemptSteal(user,carrier,d<43?0.84:0.62);}}
- else state.pressProgress=Math.max(0,state.pressProgress-dt*2.2);
+function updatePressing(dt) {
+  const user = state.players.find(function (p) { return p.isUser; });
+  const carrier = getPlayerById(state.possessionId);
+  const pressing = state.keys.has("KeyS") || state.touch.has("press");
+  if (!user || !carrier || carrier.team === user.team || !pressing) {
+    state.pressProgress = Math.max(0, state.pressProgress - dt * 1.9); return;
+  }
+  const d = distance(user, carrier);
+  if (d <= 66) {
+    const face = normalize(user.facingX, user.facingY), toward = normalize(carrier.x - user.x, carrier.y - user.y);
+    const alignment = face.x * toward.x + face.y * toward.y;
+    state.pressProgress += dt * (d < 42 ? 1.35 : 0.75) * (alignment > 0.35 ? 1.2 : 0.78);
+    if (state.pressProgress >= 0.88) { state.pressProgress = 0; attemptSteal(user, carrier, d < 43 ? 0.78 : 0.61); }
+  } else state.pressProgress = Math.max(0, state.pressProgress - dt * 2.3);
 }
 function updateAIActions(){
  const carrier=getPlayerById(state.possessionId);if(!carrier||carrier.isUser||state.elapsed-state.lastCpuAction<0.8)return;
@@ -430,32 +471,49 @@ function updateAIActions(){
   attachBallToCarrier();const target=teammates[0],direction=normalize(target.x+target.vx*0.2-state.ball.x,target.y+target.vy*0.2-state.ball.y);state.possessionId=null;state.passTargetId=target.id;state.ball.vx=direction.x*350+carrier.vx*0.2;state.ball.vy=direction.y*350+carrier.vy*0.2;state.lastCpuAction=state.elapsed;
  }
 }
-function updateBall(dt){
- const ball=state.ball;if(state.possessionId){attachBallToCarrier();return;}
- ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;ball.vx*=Math.pow(0.19,dt);ball.vy*=Math.pow(0.19,dt);
- if(ball.y<WALL+BALL_RADIUS){ball.y=WALL+BALL_RADIUS;ball.vy=Math.abs(ball.vy)*0.78;}
- if(ball.y>HEIGHT-WALL-BALL_RADIUS){ball.y=HEIGHT-WALL-BALL_RADIUS;ball.vy=-Math.abs(ball.vy)*0.78;}
- if(ball.x<WALL+BALL_RADIUS||ball.x>WIDTH-WALL-BALL_RADIUS){
-  const onPole=ball.y>=POLE_TOP-BALL_RADIUS&&ball.y<=POLE_BOTTOM+BALL_RADIUS,hitRight=ball.x>WIDTH/2;
-  if(onPole){scoreGoal(hitRight?"home":"away");return;}
-  if(ball.x<WALL+BALL_RADIUS){ball.x=WALL+BALL_RADIUS;ball.vx=Math.abs(ball.vx)*0.82;}else{ball.x=WIDTH-WALL-BALL_RADIUS;ball.vx=-Math.abs(ball.vx)*0.82;}
- }
- const speed=Math.hypot(ball.vx,ball.vy);let winner=null,bestDistance=Infinity;
- state.players.forEach(function(p){const d=distance(p,ball),catchRadius=p.radius+BALL_RADIUS+(state.passTargetId===p.id?8:0),canControl=d<=catchRadius&&(speed<365||d<15||state.passTargetId===p.id);if(canControl&&d<bestDistance){bestDistance=d;winner=p;}});
- if(winner){const message=state.passTargetId?(winner.id===state.passTargetId?"Pass completed — teammate has control.":(winner.team==="home"?"You recovered the loose ball.":"Pass intercepted! Win it back.")):(winner.isUser?"Ball recovered. Your move.":(winner.team==="home"?"Your teammate controls the ball.":"Opponent takes possession."));acquireBall(winner,message);return;}
- if(state.passTargetId&&speed<80)state.passTargetId=null;
+function updateBall(dt) {
+  const ball = state.ball;
+  if (state.possessionId) { attachBallToCarrier(); return; }
+  const speedBefore = Math.hypot(ball.vx, ball.vy);
+  if (speedBefore > 15 && ball.spin) { ball.vx += -ball.vy * ball.spin * dt * 0.7; ball.vy += ball.vx * ball.spin * dt * 0.7; }
+  ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+  const drag = speedBefore > 280 ? 0.42 : 0.22;
+  ball.vx *= Math.pow(drag, dt); ball.vy *= Math.pow(drag, dt); ball.spin = (ball.spin || 0) * Math.pow(0.12, dt);
+  if (ball.y < WALL + BALL_RADIUS) { ball.y = WALL + BALL_RADIUS; ball.vy = Math.abs(ball.vy) * 0.76; ball.vx *= 0.96; ball.spin *= -0.55; }
+  if (ball.y > HEIGHT - WALL - BALL_RADIUS) { ball.y = HEIGHT - WALL - BALL_RADIUS; ball.vy = -Math.abs(ball.vy) * 0.76; ball.vx *= 0.96; ball.spin *= -0.55; }
+  if (ball.x < WALL + BALL_RADIUS || ball.x > WIDTH - WALL - BALL_RADIUS) {
+    const onPole = ball.y >= POLE_TOP - BALL_RADIUS && ball.y <= POLE_BOTTOM + BALL_RADIUS, hitRight = ball.x > WIDTH / 2;
+    if (onPole) { scoreGoal(hitRight ? "home" : "away"); return; }
+    if (ball.x < WALL + BALL_RADIUS) { ball.x = WALL + BALL_RADIUS; ball.vx = Math.abs(ball.vx) * 0.78; ball.vy += ball.spin * 22; }
+    else { ball.x = WIDTH - WALL - BALL_RADIUS; ball.vx = -Math.abs(ball.vx) * 0.78; ball.vy -= ball.spin * 22; }
+    ball.spin *= -0.7; setCrowdLine("WALL PASS! KEEP IT MOVING!", 1.3);
+  }
+  const speed = Math.hypot(ball.vx, ball.vy); let winner = null, bestDistance = Infinity;
+  state.players.forEach(function (p) {
+    const d = distance(p, ball), radius = p.radius + BALL_RADIUS + (state.passTargetId === p.id ? 11 : 0);
+    if (d <= radius && (speed < 390 || d < 14 || state.passTargetId === p.id) && d < bestDistance) { winner = p; bestDistance = d; }
+  });
+  if (winner) {
+    const targetId = state.passTargetId, wasPass = Boolean(targetId);
+    const message = wasPass ? (winner.id === targetId ? "Pass completed — teammate has control." : (winner.team === "home" ? "You recovered the loose ball." : "Pass intercepted! Win it back.")) : (winner.isUser ? "Ball recovered. Your move." : (winner.team === "home" ? "Your teammate controls the ball." : "Opponent takes possession."));
+    acquireBall(winner, message);
+    if (wasPass && winner.team === "home") setCrowdLine(winner.id === targetId ? "ONE-TWO! NICE FOOTBALL!" : "LOOSE BALL! CHASE AM!", 1.8);
+    else if (wasPass && winner.team === "away") setCrowdLine("INTERCEPTED! NO FREE PASSES!", 1.8);
+    return;
+  }
+  if (state.passTargetId && speed < 80) state.passTargetId = null;
 }
-
-
-function updateGame(dt){
- state.elapsed+=dt;state.timeLeft=Math.max(0,state.timeLeft-dt);state.goalFlash=Math.max(0,state.goalFlash-dt);state.celebrationFlash=Math.max(0,state.celebrationFlash-dt);
- updatePlayers(dt);updatePressing(dt);updateAIActions();updateBall(dt);updateHud();
- const user=state.players.find(function(p){return p.isUser;}),hasUserBall=Boolean(user&&state.possessionId===user.id);
- if(actionLabel)actionLabel.textContent=hasUserBall?"PASS":"PRESS";
- if(actionHint)actionHint.textContent=hasUserBall?"S · TO TEAMMATE":"S · HOLD";
- if(state.timeLeft<=0)finishMatch();
+function updateGame(dt) {
+  state.elapsed += dt; state.timeLeft = Math.max(0, state.timeLeft - dt);
+  state.goalFlash = Math.max(0, state.goalFlash - dt); state.celebrationFlash = Math.max(0, state.celebrationFlash - dt);
+  state.crowdLineTimer = Math.max(0, state.crowdLineTimer - dt);
+  state.players.forEach(function (p) { p.feintTimer = Math.max(0, (p.feintTimer || 0) - dt); p.dribblePhase += dt * (state.possessionId === p.id ? 10 : 3); });
+  updatePlayers(dt); updatePressing(dt); updateAIActions(); updateBall(dt); updateHud();
+  const user = state.players.find(function (p) { return p.isUser; }), hasUserBall = Boolean(user && state.possessionId === user.id);
+  if (actionLabel) actionLabel.textContent = hasUserBall ? "PASS" : "PRESS";
+  if (actionHint) actionHint.textContent = hasUserBall ? "S · TO TEAMMATE" : "S · HOLD";
+  if (state.timeLeft <= 0) finishMatch();
 }
-
 function drawBrickWall() {
   ctx.fillStyle = COLORS.wall;
   ctx.fillRect(0, 0, WIDTH, WALL);
@@ -587,61 +645,31 @@ function drawLitter() {
 }
 
 function drawPitch() {
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  ctx.fillStyle = COLORS.dirt;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
+  ctx.clearRect(0, 0, WIDTH, HEIGHT); ctx.fillStyle = COLORS.dirt; ctx.fillRect(0, 0, WIDTH, HEIGHT);
   for (let i = 0; i < 180; i += 1) {
-    const x = (i * 137 + 29) % WIDTH;
-    const y = (i * 83 + 17) % HEIGHT;
-    const size = i % 4 === 0 ? 3 : 1.5;
+    const x = (i * 137 + 29) % WIDTH, y = (i * 83 + 17) % HEIGHT, size = i % 4 === 0 ? 3 : 1.5;
     ctx.fillStyle = i % 3 === 0 ? "rgba(75,48,28,.22)" : "rgba(232,197,148,.22)";
-    ctx.beginPath();
-    ctx.ellipse(x, y, size * 1.8, size, (i % 5) * 0.3, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, y, size * 1.8, size, (i % 5) * 0.3, 0, Math.PI * 2); ctx.fill();
   }
-
-  ctx.fillStyle = "rgba(71,45,25,.12)";
-  ctx.fillRect(WALL, WALL, WIDTH - WALL * 2, HEIGHT - WALL * 2);
-  ctx.strokeStyle = COLORS.line;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(WALL + 14, WALL + 14, WIDTH - 2 * (WALL + 14), HEIGHT - 2 * (WALL + 14));
-  ctx.beginPath();
-  ctx.moveTo(WIDTH / 2, WALL + 14);
-  ctx.lineTo(WIDTH / 2, HEIGHT - WALL - 14);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(WIDTH / 2, HEIGHT / 2, 72, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fillStyle = COLORS.line;
-  ctx.beginPath();
-  ctx.arc(WIDTH / 2, HEIGHT / 2, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  drawLitter();
-  drawGraffiti();
-  drawBrickWall();
-  drawPole(0, false);
-  drawPole(WIDTH - WALL, true);
-
-  ctx.fillStyle = "rgba(29,24,18,.66)";
-  ctx.fillRect(WIDTH / 2 - 108, 34, 216, 23);
-  ctx.fillStyle = "#f4e7cf";
-  ctx.font = "900 11px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("SMALL POLES · NEIGHBOURHOOD COURT", WIDTH / 2, 46);
-
-  if (state.goalFlash > 0) {
-    ctx.fillStyle = "rgba(242,203,57," + (state.goalFlash * 0.25) + ")";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillStyle = "rgba(71,45,25,.12)"; ctx.fillRect(WALL, WALL, WIDTH - WALL * 2, HEIGHT - WALL * 2);
+  ctx.strokeStyle = COLORS.line; ctx.lineWidth = 2; ctx.strokeRect(WALL + 14, WALL + 14, WIDTH - 2 * (WALL + 14), HEIGHT - 2 * (WALL + 14));
+  ctx.beginPath(); ctx.moveTo(WIDTH / 2, WALL + 14); ctx.lineTo(WIDTH / 2, HEIGHT - WALL - 14); ctx.stroke();
+  ctx.beginPath(); ctx.arc(WIDTH / 2, HEIGHT / 2, 72, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = COLORS.line; ctx.beginPath(); ctx.arc(WIDTH / 2, HEIGHT / 2, 4, 0, Math.PI * 2); ctx.fill();
+  drawLitter(); drawGraffiti(); drawBrickWall(); drawPole(0, false); drawPole(WIDTH - WALL, true);
+  ctx.fillStyle = "rgba(29,24,18,.72)"; ctx.fillRect(WIDTH / 2 - 132, 31, 264, 25);
+  ctx.fillStyle = "#f4e7cf"; ctx.font = "900 11px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("SMALL POLES · GHANA STREET COURT", WIDTH / 2, 43);
+  if (state.crowdLineTimer > 0 && state.crowdLine) {
+    ctx.save(); ctx.globalAlpha = Math.min(1, clamp(state.crowdLineTimer / 0.45, 0, 1));
+    ctx.fillStyle = "rgba(16,19,15,.88)"; ctx.fillRect(WIDTH / 2 - 205, HEIGHT - 58, 410, 30);
+    ctx.strokeStyle = "rgba(242,203,57,.7)"; ctx.lineWidth = 1; ctx.strokeRect(WIDTH / 2 - 205, HEIGHT - 58, 410, 30);
+    ctx.fillStyle = "#f2cb39"; ctx.font = "900 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(state.crowdLine, WIDTH / 2, HEIGHT - 43, 392); ctx.restore();
   }
-  if (state.celebrationFlash > 0) {
-    ctx.fillStyle = "rgba(255,255,255," + (state.celebrationFlash * 0.08) + ")";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  }
+  if (state.goalFlash > 0) { ctx.fillStyle = "rgba(242,203,57," + (state.goalFlash * 0.25) + ")"; ctx.fillRect(0, 0, WIDTH, HEIGHT); }
+  if (state.celebrationFlash > 0) { ctx.fillStyle = "rgba(255,255,255," + (state.celebrationFlash * 0.08) + ")"; ctx.fillRect(0, 0, WIDTH, HEIGHT); }
 }
-
 function drawPlayer(p) {
   const home = p.team === "home";
   const jersey = home ? COLORS.home : COLORS.away;
@@ -740,16 +768,22 @@ function gameLoop(timestamp) {
 }
 
 
-function handleKeyDown(event){
- const blocked=["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"];if(blocked.includes(event.code))event.preventDefault();
- if(event.code==="Escape"&&(state.phase==="playing"||state.phase==="paused")){togglePause();return;}
- if(event.code==="KeyA"&&!event.repeat){userShoot();return;}
- if(event.code==="KeyS"){const user=state.players.find(function(p){return p.isUser;});if(state.possessionId===(user&&user.id)){if(!event.repeat)userPass();}else state.keys.add("KeyS");return;}
- if(event.code==="KeyD"&&!event.repeat){userShove();return;}
- if(event.code==="KeyC"&&!event.repeat){userCelebrate();return;}
- state.keys.add(event.code);
+function handleKeyDown(event) {
+  const blocked = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"];
+  if (blocked.includes(event.code)) event.preventDefault();
+  if (event.code === "Escape" && (state.phase === "playing" || state.phase === "paused")) { togglePause(); return; }
+  if (event.code === "KeyA" && !event.repeat) { userShoot(); return; }
+  if ((event.code === "Space" || event.code === "KeyF") && !event.repeat) { userFeint(); return; }
+  if (event.code === "KeyS") {
+    const user = state.players.find(function (p) { return p.isUser; });
+    if (state.possessionId === (user && user.id)) { if (!event.repeat) userPass(); }
+    else state.keys.add("KeyS");
+    return;
+  }
+  if (event.code === "KeyD" && !event.repeat) { userShove(); return; }
+  if (event.code === "KeyC" && !event.repeat) { userCelebrate(); return; }
+  state.keys.add(event.code);
 }
-
 function handleKeyUp(event){state.keys.delete(event.code);}
 
 
@@ -758,44 +792,29 @@ function userShove(){
  if(!user||state.possessionId===user.id){matchHint.textContent="Shove is a defensive move — use it when the other side has the ball.";return;}
  const carrier=getPlayerById(state.possessionId);if(!carrier||carrier.team===user.team||distance(user,carrier)>72){matchHint.textContent="Get close to the ball carrier before shoving.";return;}attemptSteal(user,carrier,0.9);
 }
-function bindTouchControls(){
- document.querySelectorAll("[data-control]").forEach(function(button){const control=button.dataset.control;
-  const activate=function(event){event.preventDefault();if(state.phase!=="playing")return;
-   if(control==="shoot")userShoot();
-   else if(control==="action"){const user=state.players.find(function(p){return p.isUser;});if(state.possessionId===(user&&user.id))userPass();else state.touch.add("press");}
-   else if(control==="shove")userShove();else if(control==="celebrate")userCelebrate();else state.touch.add(control);
-   button.classList.add("is-active");if(button.setPointerCapture&&event.pointerId!==undefined){try{button.setPointerCapture(event.pointerId);}catch(error){}}
-  };
-  const deactivate=function(event){if(event)event.preventDefault();state.touch.delete(control);if(control==="action")state.touch.delete("press");button.classList.remove("is-active");};
-  button.addEventListener("pointerdown",activate);button.addEventListener("pointerup",deactivate);button.addEventListener("pointercancel",deactivate);button.addEventListener("lostpointercapture",deactivate);button.addEventListener("contextmenu",function(event){event.preventDefault();});
- });
+function bindTouchControls() {
+  document.querySelectorAll("[data-control]").forEach(function (button) {
+    const control = button.dataset.control;
+    const activate = function (event) {
+      event.preventDefault(); if (state.phase !== "playing") return;
+      if (control === "shoot") userShoot();
+      else if (control === "feint") userFeint();
+      else if (control === "action") {
+        const user = state.players.find(function (p) { return p.isUser; });
+        if (state.possessionId === (user && user.id)) userPass(); else state.touch.add("press");
+      } else if (control === "shove") userShove();
+      else if (control === "celebrate") userCelebrate();
+      else state.touch.add(control);
+      button.classList.add("is-active");
+      if (button.setPointerCapture && event.pointerId !== undefined) { try { button.setPointerCapture(event.pointerId); } catch (error) {} }
+    };
+    const deactivate = function (event) {
+      if (event) event.preventDefault(); state.touch.delete(control);
+      if (control === "action") state.touch.delete("press");
+      button.classList.remove("is-active");
+    };
+    button.addEventListener("pointerdown", activate); button.addEventListener("pointerup", deactivate);
+    button.addEventListener("pointercancel", deactivate); button.addEventListener("lostpointercapture", deactivate);
+    button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+  });
 }
-
-startButton.addEventListener("click", startMatch);
-pauseButton.addEventListener("click", togglePause);
-resumeButton.addEventListener("click", togglePause);
-restartButton.addEventListener("click", function () {
-  const wasRunning = state.phase === "playing";
-  resetMatch(state.mode, state.duration);
-  state.phase = "playing";
-  pauseOverlay.hidden = true;
-  resultOverlay.hidden = true;
-  pauseButton.textContent = "Ⅱ Pause";
-  state.lastFrame = 0;
-  if (!wasRunning) requestAnimationFrame(gameLoop);
-});
-backButton.addEventListener("click", returnToMenu);
-playAgainButton.addEventListener("click", startMatch);
-resultMenuButton.addEventListener("click", returnToMenu);
-window.addEventListener("keydown", handleKeyDown, { passive: false });
-window.addEventListener("keyup", handleKeyUp);
-window.addEventListener("blur", function () {
-  state.keys.clear();
-  state.touch.clear();
-  if (state.phase === "playing") togglePause();
-});
-document.addEventListener("visibilitychange", function () {
-  if (document.hidden && state.phase === "playing") togglePause();
-});
-bindTouchControls();
-render();
