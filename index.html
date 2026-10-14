@@ -7,7 +7,7 @@
   <meta name="description" content="SMALL POLES — Ghanaian neighbourhood street football. Hit the marked brick on the wall to score.">
   <title>SMALL POLES — Ghanaian Street Football</title>
   <link rel="stylesheet" href="./styles.css">
-  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/game3d.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -62,7 +62,7 @@
             <option value="180">3 minutes · Long game</option>
           </select>
           <button class="primary-button" id="startMatch" type="button">KICK OFF <span aria-hidden="true">↗</span></button>
-          <p class="setup-footnote">Offline match · No account needed</p>
+          <p class="setup-footnote">Offline 3D match · No account needed</p>
         </section>
       </section>
 
@@ -87,7 +87,7 @@
         </div>
 
         <div class="pitch-frame" id="pitchFrame">
-          <canvas id="gameCanvas" width="1000" height="600" aria-label="Top-down Ghanaian street football match. Hit the marked brick on the end wall to score. Use arrow keys to move, S to pass or press, A to shoot, D to shove, E to sprint, and C to celebrate."></canvas>
+          <canvas id="gameCanvas" width="1000" height="600" aria-label="3D Ghanaian street football match. Hit the marked brick on the end wall to score. Use arrow keys to move, S to pass or press, A to shoot, D to shove, E to sprint, and Space to feint."></canvas>
           <div class="game-overlay" id="pauseOverlay" hidden>
             <div class="overlay-card"><p class="eyebrow">TAKE A BREATHER</p><h3>MATCH PAUSED</h3><p>The court can wait. Your score is safe.</p><button class="primary-button" id="resumeMatch" type="button">RESUME MATCH</button></div>
           </div>
@@ -134,13 +134,13 @@
         <div class="section-label">THE RULES ARE SIMPLE</div>
         <div class="how-grid">
           <article><span class="how-index">01</span><h3>Find the pole</h3><p>Each end wall has one marked rectangular brick. Hit it with the ball to score. The rest of the wall sends the ball back.</p></article>
-          <article><span class="how-index">02</span><h3>Keep the ball</h3><p>The ball stays at your feet while you have possession. S passes to a teammate; when defending, hold S to press and D to shove for a tackle. A shoots, E sprints, and Space performs a quick feint while carrying the ball.</p></article>
+          <article><span class="how-index">02</span><h3>Keep the ball</h3><p>The ball stays at your feet while you have possession. S passes to a teammate; when defending, hold S to press and D to shove for a tackle. A shoots, E sprints, and Space performs a quick feint while carrying the ball. The court is rendered in real-time 3D.</p></article>
           <article><span class="how-index">03</span><h3>Own the court</h3><p>Play 1v1, 2v2, or 3v3 on a dusty enclosed court with brick walls, neighbourhood graffiti, and the occasional bit of litter.</p></article>
         </div>
       </section>
     </main>
 
-    <footer class="footer"><span>SMALL POLES <b>●</b> GHANA</span><span>BUILD 0.5 · CONTROL, SKILLS & STREET CULTURE</span></footer>
+    <footer class="footer"><span>SMALL POLES <b>●</b> GHANA</span><span>BUILD 0.6 · PROCEDURAL 3D STREET FOOTBALL</span></footer>
   </div>
 </body>
 </html>
