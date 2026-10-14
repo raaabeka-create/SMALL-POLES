@@ -244,3 +244,29 @@ kbd { display: inline-grid; min-width: 21px; height: 22px; place-items: center; 
 .pitch-frame { isolation: isolate; background: #9b7047; }
 .pitch-frame #gameCanvas { image-rendering: auto; }
 @media (max-width: 700px) { #gameCanvas { aspect-ratio: 4 / 3; } }
+
+
+/* Street-tour layer: player identity, local venues, and persistent reputation. */
+.street-tour-panel {
+  margin-top: 30px; padding: 22px; border: 1px solid #3b4735; border-radius: 12px;
+  background: linear-gradient(135deg, rgb(42 56 38 / 94%), rgb(24 30 22 / 96%));
+  box-shadow: inset 3px 0 0 var(--yellow), 0 18px 50px rgb(0 0 0 / 16%);
+}
+.tour-panel-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tour-kicker { color: var(--green-bright); font-size: 9px; font-weight: 900; letter-spacing: .16em; }
+.tour-level { padding: 6px 8px; border: 1px solid #59694b; border-radius: 4px; color: var(--yellow); font-size: 10px; font-weight: 900; letter-spacing: .08em; }
+.street-tour-panel h2 { margin: 15px 0 8px; font-size: clamp(20px, 2vw, 27px); letter-spacing: -.04em; }
+.street-tour-panel > p { max-width: 470px; margin: 0; color: #b6c0ad; font-size: 13px; line-height: 1.65; }
+.tour-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 22px; padding-top: 17px; border-top: 1px solid #394432; }
+.tour-stats div { display: grid; gap: 7px; min-width: 0; }
+.tour-stats span { color: #8f9d86; font-size: 9px; font-weight: 850; letter-spacing: .1em; }
+.tour-stats strong { color: #f4f2e9; font-size: clamp(12px, 1.2vw, 15px); white-space: nowrap; }
+.customization-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0 17px; }
+.customization-field { display: grid; gap: 9px; min-width: 0; }
+.customization-field .duration-select { margin: 0; width: 100%; }
+@media (max-width: 720px) {
+  .street-tour-panel { margin-top: 24px; padding: 18px; }
+  .tour-stats { gap: 7px; }
+  .tour-stats strong { font-size: 11px; }
+  .customization-grid { grid-template-columns: 1fr; gap: 14px; }
+}
