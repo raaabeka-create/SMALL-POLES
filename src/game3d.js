@@ -345,10 +345,10 @@ function shove(player) {
 }
 function inputVector() {
   let x = 0, z = 0;
-  if (state.keys.has("ArrowLeft") || state.keys.has("a") || state.touch.has("left")) x--;
-  if (state.keys.has("ArrowRight") || state.keys.has("d") || state.touch.has("right")) x++;
-  if (state.keys.has("ArrowUp") || state.keys.has("w") || state.touch.has("up")) z--;
-  if (state.keys.has("ArrowDown") || state.keys.has("s") || state.touch.has("down")) z++;
+  if (state.keys.has("ArrowLeft") || state.touch.has("left")) x--;
+  if (state.keys.has("ArrowRight") || state.touch.has("right")) x++;
+  if (state.keys.has("ArrowUp") || state.touch.has("up")) z--;
+  if (state.keys.has("ArrowDown") || state.touch.has("down")) z++;
   const l = Math.hypot(x, z); if (l > 0) { x /= l; z /= l; }
   return { x, z };
 }
@@ -484,7 +484,8 @@ function handleAction(action) {
   if (action === "celebrate") { user.celebration = .8; setHint("LET THEM KNOW. STREET FOOTBALL."); }
 }
 function keyName(event) {
-  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Shift"].includes(event.key)) return event.key === " " ? " " : event.key;
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return event.key;
+  if (event.key === " ") return " ";
   return event.key.toLowerCase();
 }
 document.addEventListener("keydown", event => {
