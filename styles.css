@@ -219,3 +219,11 @@ kbd { display: inline-grid; min-width: 21px; height: 22px; place-items: center; 
 @media (max-width: 360px) {
   .action-button strong { font-size: 8px; }
 }
+
+
+/* Build 0.4: possession actions */
+.action-buttons{grid-template-columns:repeat(5,minmax(0,1fr));}
+.action-button.shove-action{border-color:#9d4c3d;background:linear-gradient(145deg,#3a211d,#241815);}
+.action-button.shove-action>span{color:#ff8d74;background:#4a2923;}
+@media(max-width:700px){.action-buttons{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}.action-button{min-height:72px;padding:6px 2px}.action-button strong{font-size:8px}.action-button small{font-size:7px;letter-spacing:0}}
+@media(max-width:360px){.action-button strong{font-size:7px}}
