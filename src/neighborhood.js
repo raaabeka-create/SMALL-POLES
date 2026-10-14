@@ -5,7 +5,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
  * Lightweight procedural scenery, built from Three.js primitives so the game
  * does not need external models or textures.
  */
-export function addNeighborhood(THREE, scene) {
+export function addNeighborhood(THREE, scene, venue = "accra") {
   const root = new THREE.Group();
   root.name = "small-poles-neighbourhood";
   scene.add(root);
@@ -65,9 +65,10 @@ export function addNeighborhood(THREE, scene) {
   }
 
   // Dusty ground apron beyond the court, visually merging into the distance.
+  const apronColors = { accra: "#ad8b61", jamestown: "#b69b78", kumasi: "#9d9668" };
   const apron = new THREE.Mesh(
     new THREE.PlaneGeometry(100, 100),
-    new THREE.MeshStandardMaterial({ color: "#ad8b61", roughness: 1 })
+    new THREE.MeshStandardMaterial({ color: apronColors[venue] || apronColors.accra, roughness: 1 })
   );
   apron.rotation.x = -Math.PI / 2;
   apron.position.set(0, -.39, 0);
