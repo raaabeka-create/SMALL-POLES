@@ -32,6 +32,16 @@
           <div class="feature-pills">
             <span>⚽ Hit the brick to score</span><span>🇬🇭 Neighbourhood energy</span><span>👟 1v1 · 2v2 · 3v3</span>
           </div>
+          <section class="street-tour-panel" aria-labelledby="streetTourTitle">
+            <div class="tour-panel-top"><span class="tour-kicker">YOUR STORY STARTS HERE</span><span class="tour-level" id="careerLevel">LEVEL 01</span></div>
+            <h2 id="streetTourTitle">THE STREET TOUR</h2>
+            <p>Earn respect one court at a time. Every match builds your record and takes you closer to local legend status.</p>
+            <div class="tour-stats">
+              <div><span>RECORD</span><strong id="careerRecord">0W · 0D · 0L</strong></div>
+              <div><span>POLES HIT</span><strong id="careerGoals">0</strong></div>
+              <div><span>REP POINTS</span><strong id="careerXP">0 XP</strong></div>
+            </div>
+          </section>
         </div>
 
         <section class="setup-card" aria-labelledby="setupTitle">
@@ -55,6 +65,26 @@
             </label>
           </fieldset>
 
+          <div class="customization-grid">
+            <div class="customization-field">
+              <label class="duration-label" for="courtVenue">YOUR COURT</label>
+              <select id="courtVenue" class="duration-select">
+                <option value="accra">Accra · Dust &amp; Brick</option>
+                <option value="jamestown">Jamestown · Coastal Heat</option>
+                <option value="kumasi">Kumasi · Green Quarter</option>
+              </select>
+            </div>
+            <div class="customization-field">
+              <label class="duration-label" for="kitColor">YOUR CREW COLOUR</label>
+              <select id="kitColor" class="duration-select">
+                <option value="#21884b">Accra Green</option>
+                <option value="#e4b72d">Gold Coast</option>
+                <option value="#e44b3c">Street Red</option>
+                <option value="#397bb7">Electric Blue</option>
+                <option value="#f0e6d0">Off-White</option>
+              </select>
+            </div>
+          </div>
           <label class="duration-label" for="matchDuration">MATCH LENGTH</label>
           <select id="matchDuration" class="duration-select">
             <option value="60">60 seconds · Quick run</option>
@@ -140,7 +170,7 @@
       </section>
     </main>
 
-    <footer class="footer"><span>SMALL POLES <b>●</b> GHANA</span><span>BUILD 0.6 · PROCEDURAL 3D STREET FOOTBALL</span></footer>
+    <footer class="footer"><span>SMALL POLES <b>●</b> GHANA</span><span>STREET TOUR · BUILD 0.7</span></footer>
   </div>
 </body>
 </html>
