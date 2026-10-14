@@ -8,6 +8,13 @@ A Ghana-inspired neighbourhood street-football browser game. The current build i
 - 3D player characters with animated running limbs, skin tones, team kits, and celebration movement.
 - A rolling/bouncing 3D ball, wall rebounds, local possession, passes, shots, tackles, and 1v1/2v2/3v3 AI.
 
+## Street Tour foundation
+- Street Tour profile with locally saved matches, wins/draws/losses, poles hit, reputation points, and levels.
+- Player identity setup: street name tag, skin tone, and crew kit colour.
+- Three selectable Ghanaian court settings: Accra, Jamestown, and Kumasi, each with distinct sky/lighting and neighbourhood colour treatment.
+- Procedural compound houses, kiosks, market stalls, utility poles and wires, coastal props, spectators, palms, and dusty surroundings.
+- Court selection rebuilds the 3D scene so changing venues between matches takes effect.
+
 ## Current gameplay
 - Local offline matches: 1v1, 2v2, and 3v3 against lightweight AI.
 - Match durations: 60 seconds, 2 minutes, or 3 minutes.
