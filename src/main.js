@@ -355,28 +355,50 @@ function nearestBallPlayer(team, excludeUser) {
 }
 
 
-function moveAI(player,dt){
- const isHome=player.team==="home",hasPossession=state.possessionId===player.id,carrier=getPlayerById(state.possessionId),ballTarget=carrier||state.ball,targetPoleX=isHome?WIDTH-WALL:WALL;
- let targetX=player.x,targetY=player.y;
- if(hasPossession){targetX=targetPoleX+(isHome?-165:165);targetY=clamp(HEIGHT/2+(HEIGHT/2-player.y)*0.18,95,HEIGHT-95);}
- else if(carrier&&carrier.team!==player.team){
-  const shouldChase=isHome?(!player.isUser&&distance(player,ballTarget)<300):distance(player,ballTarget)<340;
-  if(shouldChase){targetX=ballTarget.x+(isHome?-22:22);targetY=ballTarget.y;}
-  else{const lane=state.mode===1?0:(player.index-(state.mode-1)/2)*76;targetX=isHome?clamp(ballTarget.x-110,75,WIDTH/2-65):clamp(ballTarget.x+110,WIDTH/2+65,WIDTH-75);targetY=clamp(ballTarget.y+lane,70,HEIGHT-70);}
- }else if(carrier&&carrier.team===player.team){
-  const lane=state.mode===1?0:(player.index-(state.mode-1)/2)*88;targetX=isHome?clamp(ballTarget.x+80,100,WIDTH-100):clamp(ballTarget.x-80,100,WIDTH-100);targetY=clamp(ballTarget.y+lane,70,HEIGHT-70);
- }else{
-  const chaser=nearestBallPlayer(player.team,false);
-  if(chaser&&chaser.id===player.id){targetX=state.ball.x+(isHome?-18:18);targetY=state.ball.y;}
-  else{const lane=state.mode===1?0:(player.index-(state.mode-1)/2)*75;targetX=isHome?clamp(state.ball.x-100,80,WIDTH/2-65):clamp(state.ball.x+100,WIDTH/2+65,WIDTH-80);targetY=clamp(state.ball.y+lane,70,HEIGHT-70);}
- }
- const direction=normalize(targetX-player.x,targetY-player.y),speed=player.speed*(hasPossession?0.9:0.95);
- player.vx+=direction.x*650*dt;player.vy+=direction.y*650*dt;const currentSpeed=Math.hypot(player.vx,player.vy);
- if(currentSpeed>speed){player.vx=player.vx/currentSpeed*speed;player.vy=player.vy/currentSpeed*speed;}
- if(Math.hypot(direction.x,direction.y)>0.1){player.facingX=direction.x;player.facingY=direction.y;}
+function moveAI(player, dt) {
+  const isHome = player.team === "home", hasPossession = state.possessionId === player.id;
+  const carrier = getPlayerById(state.possessionId), ballTarget = carrier || state.ball;
+  const targetPoleX = isHome ? WIDTH - WALL : WALL;
+  let targetX = player.x, targetY = player.y;
+  if (hasPossession) {
+    const pressure = state.players.filter(function (p) { return p.team !== player.team; }).sort(function (a, b) { return distance(a, player) - distance(b, player); })[0];
+    const pressured = pressure && distance(pressure, player) < 76;
+    targetX = targetPoleX + (isHome ? -150 : 150);
+    targetY = clamp(HEIGHT / 2 + (HEIGHT / 2 - player.y) * 0.22, 85, HEIGHT - 85);
+    if (pressured) {
+      targetY = clamp(player.y + (player.y < HEIGHT / 2 ? 92 : -92), 65, HEIGHT - 65);
+      targetX = clamp(player.x + (isHome ? 65 : -65), WALL + 50, WIDTH - WALL - 50);
+    }
+  } else if (carrier && carrier.team !== player.team) {
+    const shouldChase = isHome ? (!player.isUser && distance(player, ballTarget) < 300) : distance(player, ballTarget) < 340;
+    if (shouldChase) { targetX = ballTarget.x + (isHome ? -22 : 22); targetY = ballTarget.y; }
+    else {
+      const lane = state.mode === 1 ? 0 : (player.index - (state.mode - 1) / 2) * 76;
+      targetX = isHome ? clamp(ballTarget.x - 110, 75, WIDTH / 2 - 65) : clamp(ballTarget.x + 110, WIDTH / 2 + 65, WIDTH - 75);
+      targetY = clamp(ballTarget.y + lane, 70, HEIGHT - 70);
+    }
+  } else if (carrier && carrier.team === player.team) {
+    const lane = state.mode === 1 ? 0 : (player.index - (state.mode - 1) / 2) * 94;
+    const attackDirection = isHome ? 1 : -1;
+    targetX = clamp(ballTarget.x - attackDirection * 88, 90, WIDTH - 90);
+    targetY = clamp(ballTarget.y + lane, 70, HEIGHT - 70);
+    // Move laterally to open a passing lane rather than stack behind the carrier.
+    if (Math.abs(targetY - ballTarget.y) < 45 && state.mode > 1) targetY = clamp(ballTarget.y + (player.index % 2 ? 105 : -105), 65, HEIGHT - 65);
+  } else {
+    const chaser = nearestBallPlayer(player.team, false);
+    if (chaser && chaser.id === player.id) { targetX = state.ball.x + (isHome ? -18 : 18); targetY = state.ball.y; }
+    else {
+      const lane = state.mode === 1 ? 0 : (player.index - (state.mode - 1) / 2) * 78;
+      targetX = isHome ? clamp(state.ball.x - 100, 80, WIDTH / 2 - 65) : clamp(state.ball.x + 100, WIDTH / 2 + 65, WIDTH - 80);
+      targetY = clamp(state.ball.y + lane, 70, HEIGHT - 70);
+    }
+  }
+  const direction = normalize(targetX - player.x, targetY - player.y), speed = player.speed * (hasPossession ? 0.88 : 0.98);
+  player.vx += direction.x * (hasPossession ? 610 : 720) * dt; player.vy += direction.y * (hasPossession ? 610 : 720) * dt;
+  const currentSpeed = Math.hypot(player.vx, player.vy);
+  if (currentSpeed > speed) { player.vx = player.vx / currentSpeed * speed; player.vy = player.vy / currentSpeed * speed; }
+  if (Math.hypot(direction.x, direction.y) > 0.1) { player.facingX = direction.x; player.facingY = direction.y; }
 }
-
-
 function updatePlayers(dt){
  state.players.forEach(function(p){if(p.celebrate>0)p.celebrate=Math.max(0,p.celebrate-dt);p.tackleCooldown=Math.max(0,(p.tackleCooldown||0)-dt);if(p.isUser)moveUser(p,dt);else moveAI(p,dt);
   p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(0.0009,dt);p.vy*=Math.pow(0.0009,dt);p.x=clamp(p.x,WALL+PLAYER_RADIUS,WIDTH-WALL-PLAYER_RADIUS);p.y=clamp(p.y,WALL+PLAYER_RADIUS,HEIGHT-WALL-PLAYER_RADIUS);
@@ -461,15 +483,50 @@ function updatePressing(dt) {
     if (state.pressProgress >= 0.88) { state.pressProgress = 0; attemptSteal(user, carrier, d < 43 ? 0.78 : 0.61); }
   } else state.pressProgress = Math.max(0, state.pressProgress - dt * 2.3);
 }
-function updateAIActions(){
- const carrier=getPlayerById(state.possessionId);if(!carrier||carrier.isUser||state.elapsed-state.lastCpuAction<0.8)return;
- const targetX=carrier.team==="home"?WIDTH-WALL:WALL,toPole=distance(carrier,{x:targetX,y:HEIGHT/2}),opponent=nearestBallPlayer(carrier.team==="home"?"away":"home",false),underPressure=opponent&&distance(opponent,carrier)<58;
- const teammates=state.players.filter(function(p){return p.team===carrier.team&&p.id!==carrier.id;}).sort(function(a,b){return distance(a,carrier)-distance(b,carrier);});
- if(toPole<345||(carrier.team==="away"&&toPole<430&&!underPressure)){
-  attachBallToCarrier();const direction=normalize(targetX-state.ball.x,HEIGHT/2-state.ball.y);state.possessionId=null;state.passTargetId=null;state.ball.vx=direction.x*510+carrier.vx*0.35;state.ball.vy=direction.y*510+carrier.vy*0.35;state.lastCpuShot=state.elapsed;state.lastCpuAction=state.elapsed;matchHint.textContent=carrier.team==="away"?"Opponent shoots for the pole!":"Your teammate takes the shot!";
- }else if(teammates.length&&(underPressure||state.elapsed-state.lastCpuAction>2.2)){
-  attachBallToCarrier();const target=teammates[0],direction=normalize(target.x+target.vx*0.2-state.ball.x,target.y+target.vy*0.2-state.ball.y);state.possessionId=null;state.passTargetId=target.id;state.ball.vx=direction.x*350+carrier.vx*0.2;state.ball.vy=direction.y*350+carrier.vy*0.2;state.lastCpuAction=state.elapsed;
- }
+function updateAIActions() {
+  const carrier = getPlayerById(state.possessionId);
+  if (!carrier || carrier.isUser || state.elapsed - state.lastCpuAction < 0.72) return;
+  const targetX = carrier.team === "home" ? WIDTH - WALL : WALL;
+  const toPole = distance(carrier, { x: targetX, y: HEIGHT / 2 });
+  const opponentTeam = carrier.team === "home" ? "away" : "home";
+  const opponents = state.players.filter(function (p) { return p.team === opponentTeam; });
+  opponents.sort(function (a, b) { return distance(a, carrier) - distance(b, carrier); });
+  const pressureDistance = opponents.length ? distance(opponents[0], carrier) : Infinity;
+  const underPressure = pressureDistance < 72;
+  const teammates = state.players.filter(function (p) { return p.team === carrier.team && p.id !== carrier.id; });
+  const openTeammates = teammates.map(function (p) {
+    const nearestDefender = opponents.reduce(function (best, defender) { return Math.min(best, distance(defender, p)); }, Infinity);
+    const progress = carrier.team === "home" ? p.x : WIDTH - p.x;
+    const passingDistance = distance(p, carrier);
+    return { player: p, score: nearestDefender * 1.15 - passingDistance * 0.24 + progress * 0.05, passingDistance: passingDistance };
+  }).sort(function (a, b) { return b.score - a.score; });
+  const shouldShoot = toPole < 310 || (carrier.team === "away" && toPole < 400 && !underPressure);
+  if (shouldShoot) {
+    attachBallToCarrier();
+    const direction = normalize(targetX - state.ball.x, HEIGHT / 2 - state.ball.y);
+    state.possessionId = null; state.passTargetId = null;
+    state.ball.vx = direction.x * 500 + carrier.vx * 0.42;
+    state.ball.vy = direction.y * 500 + carrier.vy * 0.42;
+    state.ball.spin = clamp(carrier.vy * 0.0012, -0.45, 0.45);
+    state.lastCpuShot = state.elapsed; state.lastCpuAction = state.elapsed;
+    matchHint.textContent = carrier.team === "away" ? "Opponent shoots for the pole!" : "Your teammate takes the shot!";
+    setCrowdLine(carrier.team === "away" ? "WATCH THE POLE! THEY'RE SHOOTING!" : "TEAM PLAY! LET THAT ONE FLY!", 2);
+    return;
+  }
+  // Under pressure, pick a teammate with a clear lane; otherwise carry the ball into space.
+  if (openTeammates.length && (underPressure || state.elapsed - state.lastCpuAction > 2.4)) {
+    const choice = openTeammates[0], target = choice.player;
+    if (choice.passingDistance < 270 && choice.score > 20) {
+      attachBallToCarrier();
+      const direction = normalize(target.x + target.vx * 0.24 - state.ball.x, target.y + target.vy * 0.24 - state.ball.y);
+      const passSpeed = clamp(choice.passingDistance * 1.15, 300, 430);
+      state.possessionId = null; state.passTargetId = target.id;
+      state.ball.vx = direction.x * passSpeed + carrier.vx * 0.24;
+      state.ball.vy = direction.y * passSpeed + carrier.vy * 0.24;
+      state.ball.spin = direction.y * 0.18; state.lastCpuAction = state.elapsed;
+      if (carrier.team === "home") setCrowdLine("GOOD MOVEMENT! GIVE-AND-GO!", 1.8);
+    }
+  }
 }
 function updateBall(dt) {
   const ball = state.ball;
