@@ -15,13 +15,14 @@ const ui = {
   matchTitle: $("#matchTitle"), homeScore: $("#homeScore"), awayScore: $("#awayScore"),
   clock: $("#matchClock"), resultHeadline: $("#resultHeadline"), resultSummary: $("#resultSummary"),
   resultScore: $("#resultScore"), hint: $("#matchHint"), actionLabel: $("#actionLabel"),
-  actionHint: $("#actionHint"), pitchFrame: $("#pitchFrame")
+  actionHint: $("#actionHint"), pitchFrame: $("#pitchFrame"), careerLevel: $("#careerLevel"),
+  careerRecord: $("#careerRecord"), careerGoals: $("#careerGoals"), careerXP: $("#careerXP")
 };
 const THREE_CDN_NOTE = "3D graphics need an internet connection to load Three.js the first time.";
 const COURT = { width: 22, length: 30, wallHeight: 3.2, halfW: 11, halfL: 15 };
 const state = {
   mode: 1, duration: 120, remaining: 120, homeScore: 0, awayScore: 0,
-  running: false, paused: false, ended: false, lastTime: 0,
+  running: false, paused: false, ended: false, lastTime: 0, careerSaved: false, matchGoals: 0,
   keys: new Set(), touch: new Set(), players: [], ball: null,
   carrier: null, shotCooldown: 0, hintCooldown: 0, elapsed: 0
 };
@@ -29,6 +30,33 @@ let scene, camera, renderer, clock, courtGroup, ballMesh, ballShadow, targetMesh
 let homeTarget, awayTarget, ambient, sun, cameraTarget = new THREE.Vector3();
 const held = new Set();
 
+const CAREER_KEY = "small-poles-street-tour-v1";
+function loadCareer() {
+  const empty = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, xp: 0 };
+  try { return { ...empty, ...JSON.parse(localStorage.getItem(CAREER_KEY) || "{}") }; }
+  catch { return empty; }
+}
+function paintCareer() {
+  const c = loadCareer();
+  const level = Math.floor(c.xp / 250) + 1;
+  if (ui.careerLevel) ui.careerLevel.textContent = "LEVEL " + String(level).padStart(2, "0");
+  if (ui.careerRecord) ui.careerRecord.textContent = c.wins + "W · " + c.draws + "D · " + c.losses + "L";
+  if (ui.careerGoals) ui.careerGoals.textContent = String(c.goals);
+  if (ui.careerXP) ui.careerXP.textContent = c.xp + " XP";
+}
+function saveCareerResult() {
+  if (state.careerSaved) return;
+  state.careerSaved = true;
+  const c = loadCareer();
+  c.matches++;
+  if (state.homeScore > state.awayScore) c.wins++;
+  else if (state.homeScore === state.awayScore) c.draws++;
+  else c.losses++;
+  c.goals += state.matchGoals;
+  c.xp += 25 + state.matchGoals * 10 + (state.homeScore > state.awayScore ? 50 : state.homeScore === state.awayScore ? 25 : 10);
+  try { localStorage.setItem(CAREER_KEY, JSON.stringify(c)); } catch {}
+  paintCareer();
+}
 function mat(color, roughness = 0.86, metalness = 0) {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness });
 }
@@ -151,7 +179,8 @@ function addStreetDetails() {
 }
 function createPlayer(team, index) {
   const root = new THREE.Group();
-  const shirtColor = team === "home" ? (index === 0 ? "#21884b" : "#40a85e") : (index === 0 ? "#c93832" : "#e85a48");
+  const selectedKit = document.querySelector("#kitColor")?.value || "#21884b";
+  const shirtColor = team === "home" ? selectedKit : (index === 0 ? "#c93832" : "#e85a48");
   const shirt = mat(shirtColor), shorts = mat(team === "home" ? "#202e25" : "#302427");
   const skin = mat(["#7b4a2e", "#965b38", "#633a27", "#a76a43"][(index + (team === "away" ? 1 : 0)) % 4]);
   const socks = mat(team === "home" ? "#f2ead4" : "#f0d7c8"), boot = mat("#191b18");
@@ -201,7 +230,13 @@ function createBall() {
   state.ball = { x: 0, y: .3, z: 0, vx: 0, vy: 0, vz: 0, spin: 0, lastTeam: "home" };
 }
 function init3D() {
-  scene = new THREE.Scene(); scene.background = new THREE.Color("#c5a078"); scene.fog = new THREE.Fog("#c5a078", 32, 68);
+  const venue = document.querySelector("#courtVenue")?.value || "accra";
+  const venueStyle = {
+    accra: { sky: "#c5a078", fog: "#c5a078", sun: "#fff0cf", ambient: "#f7dfb6" },
+    jamestown: { sky: "#9fb8bd", fog: "#9fb8bd", sun: "#ffe1bc", ambient: "#d8e7e0" },
+    kumasi: { sky: "#a5b18a", fog: "#a5b18a", sun: "#f5e8bd", ambient: "#e0e7c9" }
+  }[venue] || { sky: "#c5a078", fog: "#c5a078", sun: "#fff0cf", ambient: "#f7dfb6" };
+  scene = new THREE.Scene(); scene.background = new THREE.Color(venueStyle.sky); scene.fog = new THREE.Fog(venueStyle.fog, 42, 92);
   camera = new THREE.PerspectiveCamera(55, 1, .1, 120);
   camera.position.set(0, 18, 31); camera.lookAt(0, 0, 0);
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
@@ -211,13 +246,13 @@ function init3D() {
   renderer.domElement.id = "gameCanvas"; renderer.domElement.setAttribute("aria-label", "3D Ghanaian street football. Use arrow keys or touch controls to move, S to pass or press, A to shoot, D to tackle, E to sprint and Space to feint.");
   renderer.domElement.style.display = "block";
   ui.canvas.replaceWith(renderer.domElement); ui.canvas = renderer.domElement;
-  ambient = new THREE.HemisphereLight("#f7dfb6", "#45352a", 2.0); scene.add(ambient);
-  sun = new THREE.DirectionalLight("#fff0cf", 3.2); sun.position.set(-8, 19, 11); sun.castShadow = true;
+  ambient = new THREE.HemisphereLight(venueStyle.ambient, "#45352a", 2.0); scene.add(ambient);
+  sun = new THREE.DirectionalLight(venueStyle.sun, 3.2); sun.position.set(-8, 19, 11); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -19; sun.shadow.camera.right = 19;
   sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25; scene.add(sun);
   const bounce = new THREE.DirectionalLight("#d9e6cf", .65); bounce.position.set(9, 7, -12); scene.add(bounce);
   createCourt();
-  addNeighborhood(THREE, scene);
+  addNeighborhood(THREE, scene, venue);
   createBall();
   clock = new THREE.Clock();
   window.addEventListener("resize", resizeRenderer);
@@ -232,7 +267,7 @@ function resizeRenderer() {
 function resetMatch() {
   state.mode = Number(document.querySelector('input[name="matchMode"]:checked')?.value || 1);
   state.duration = Number($("#matchDuration")?.value || 120);
-  state.remaining = state.duration; state.homeScore = 0; state.awayScore = 0;
+  state.remaining = state.duration; state.homeScore = 0; state.awayScore = 0; state.matchGoals = 0; state.careerSaved = false;
   state.running = true; state.paused = false; state.ended = false; state.elapsed = 0;
   state.keys.clear(); state.touch.clear(); state.carrier = null; state.shotCooldown = 0;
   if (state.players.length) state.players.forEach(p => scene.remove(p.root));
@@ -243,7 +278,8 @@ function resetMatch() {
   ballMesh.position.set(0, .3, 0); ballMesh.rotation.set(0, 0, 0);
   ui.homeScore.textContent = "0"; ui.awayScore.textContent = "0";
   ui.clock.textContent = formatTime(state.remaining);
-  ui.matchTitle.textContent = state.mode + "v" + state.mode + " SMALL POLES · 3D";
+  const venueLabel = ({ accra: "ACCRA", jamestown: "JAMESTOWN", kumasi: "KUMASI" })[document.querySelector("#courtVenue")?.value || "accra"] || "ACCRA";
+  ui.matchTitle.textContent = state.mode + "v" + state.mode + " SMALL POLES · " + venueLabel;
   ui.intro.hidden = true; ui.game.hidden = false; ui.pauseOverlay.hidden = true; ui.resultOverlay.hidden = true;
   ui.pause.textContent = "Ⅱ Pause"; ui.hint.textContent = "3D COURT LIVE — hit the marked brick to score. The wall rebounds every miss.";
   resizeRenderer(); updateActionLabel(); placeBall();
@@ -266,7 +302,7 @@ function placeBall() {
 }
 function setHint(text) { ui.hint.textContent = text; state.hintCooldown = 2.2; }
 function endMatch() {
-  state.running = false; state.ended = true; ui.resultOverlay.hidden = false;
+  state.running = false; state.ended = true; saveCareerResult(); ui.resultOverlay.hidden = false;
   const won = state.homeScore > state.awayScore, drew = state.homeScore === state.awayScore;
   ui.resultHeadline.textContent = drew ? "LEVEL PEGGING" : won ? "COURT OWNED" : "RUN IT BACK";
   ui.resultSummary.textContent = drew ? "Nobody claimed the pole this time." : won ? "Your side found the brick when it mattered." : "The challengers hit their target more often. One more run?";
@@ -274,7 +310,7 @@ function endMatch() {
 }
 function score(team) {
   if (!state.running) return;
-  if (team === "home") state.homeScore++; else state.awayScore++;
+  if (team === "home") { state.homeScore++; state.matchGoals++; } else state.awayScore++;
   ui.homeScore.textContent = String(state.homeScore); ui.awayScore.textContent = String(state.awayScore);
   setHint(team === "home" ? "BRICK! YOUR SIDE CLAIMS THE POLE." : "THE CHALLENGERS HIT THEIR BRICK.");
   state.players.forEach(p => { if (p.team === team) p.celebration = .8; });
@@ -529,3 +565,6 @@ document.querySelectorAll('input[name="matchMode"]').forEach(input => input.addE
   state.mode = Number(input.value);
 }));
 ui.pitchFrame.addEventListener("contextmenu", event => event.preventDefault());
+
+
+paintCareer();
