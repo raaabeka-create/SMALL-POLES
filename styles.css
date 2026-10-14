@@ -270,3 +270,6 @@ kbd { display: inline-grid; min-width: 21px; height: 22px; place-items: center; 
   .tour-stats strong { font-size: 11px; }
   .customization-grid { grid-template-columns: 1fr; gap: 14px; }
 }
+
+.name-field { grid-column: 1 / -1; }
+.customization-field .duration-select::placeholder { color: #879181; }
