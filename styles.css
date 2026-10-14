@@ -234,3 +234,6 @@ kbd { display: inline-grid; min-width: 21px; height: 22px; place-items: center; 
 .action-button.feint-action > span { color: var(--yellow); background: #39351e; }
 @media (max-width: 700px) { .action-buttons { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; } .action-button { min-height: 72px; } .action-button strong { font-size: 7px; } .action-button small { font-size: 6px; } }
 @media (max-width: 390px) { .action-button strong { font-size: 6px; } .action-button small { font-size: 6px; } }
+
+/* Six compact action tiles, including the new feint skill. */
+.action-buttons { grid-template-columns: repeat(6, minmax(0, 1fr)); }
