@@ -1,6 +1,12 @@
 # SMALL POLES
 
-A Ghana-inspired neighbourhood street-football browser game. The current build is a local playable prototype built with HTML, CSS, JavaScript, and HTML Canvas.
+A Ghana-inspired neighbourhood street-football browser game. The current build is a local playable prototype built with HTML, CSS, JavaScript, and Three.js WebGL rendering. The 3D scene is generated procedurally; Three.js loads from jsDelivr, so the first load requires internet access.
+
+## 3D presentation
+- Real-time perspective camera and WebGL-rendered enclosed dirt court.
+- Procedural brick walls with Ghana-inspired street lettering, target bricks, scattered court debris, lights, and directional shadows.
+- 3D player characters with animated running limbs, skin tones, team kits, and celebration movement.
+- A rolling/bouncing 3D ball, wall rebounds, local possession, passes, shots, tackles, and 1v1/2v2/3v3 AI.
 
 ## Current gameplay
 - Local offline matches: 1v1, 2v2, and 3v3 against lightweight AI.
