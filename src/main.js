@@ -875,3 +875,26 @@ function bindTouchControls() {
     button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
   });
 }
+
+
+// Application bootstrapping and UI event wiring.
+startButton.addEventListener("click", startMatch);
+pauseButton.addEventListener("click", togglePause);
+resumeButton.addEventListener("click", togglePause);
+restartButton.addEventListener("click", startMatch);
+backButton.addEventListener("click", returnToMenu);
+playAgainButton.addEventListener("click", startMatch);
+resultMenuButton.addEventListener("click", returnToMenu);
+
+document.addEventListener("keydown", handleKeyDown);
+document.addEventListener("keyup", handleKeyUp);
+window.addEventListener("blur", function () {
+  state.keys.clear();
+  state.touch.clear();
+  document.querySelectorAll("[data-control].is-active").forEach(function (button) {
+    button.classList.remove("is-active");
+  });
+});
+
+bindTouchControls();
+render();
