@@ -5,32 +5,35 @@ A Ghana-inspired neighbourhood street-football browser game. The current build i
 ## Current gameplay
 - Local offline matches: 1v1, 2v2, and 3v3 against lightweight AI.
 - Match durations: 60 seconds, 2 minutes, or 3 minutes.
-- **Small Poles scoring:** score by kicking the ball into the marked rectangular brick on the end wall. Shots that miss the target rebound off the wall; there are no conventional goal nets.
-- Player movement, collisions, ball momentum, passing, sprinting, shooting, celebrations, scoreboard, timer, pause, restart, and full-time results.
+- Small Poles scoring: hit the marked rectangular brick on the end wall. Misses rebound; there are no conventional goal nets.
+- Ball possession sticks to the carrier's feet until a pass, shot, tackle, or interception releases it.
+- Passing travels toward a teammate with a lead based on their movement. Opponents can intercept passes and claim loose balls.
+- Defensive pressing builds pressure while held close to the carrier; shoving is a higher-risk, cooldown-limited tackle.
+- Basic AI dribbles, passes under pressure, and shoots when close enough to the pole.
 - Ghanaian neighbourhood court styling: dusty earth, enclosed red-brick walls, hand-painted graffiti, and subtle scattered litter.
-- Responsive on-screen Pass, Sprint, Shoot, and Celebrate controls.
-- No account or backend configuration is needed to play the current prototype.
+- Responsive on-screen controls for Pass/Press, Sprint, Shoot, Shove, and Celebrate.
 
 ## Controls
-- **Move:** WASD or arrow keys.
-- **Pass:** P, when close to the ball. In 2v2 and 3v3, passes aim toward the nearest teammate; in 1v1, it is a quick touch into space.
-- **Shoot:** Space, when near the ball.
-- **Sprint:** Hold Shift.
-- **Celebrate:** C.
-- **Pause / resume:** Pause button or Escape.
-- **Mobile:** Use the direction pad and on-screen Pass, Sprint, Shoot, and Celebrate buttons.
+- Move: Arrow keys or on-screen direction controls; diagonals are supported.
+- S — Pass / Press: with possession, pass automatically targets a teammate; without possession, hold S to pressure the opposing carrier.
+- A — Shoot: shoot toward the opponent's half. Directional movement adjusts the shot angle.
+- D — Shove: attempt a close-range tackle when defending. Timing and distance matter.
+- E — Sprint: hold to sprint; sprinting with the ball is slower than sprinting off the ball.
+- C — Celebrate.
+- Escape — pause/resume.
+- Mobile: use directional controls and on-screen action buttons. Hold Pass/Press while defending to build pressure.
 
 ## Run the current prototype
-Open index.html in a modern browser, or publish the repository as a static site. The current build uses browser-native JavaScript and has no dependency-install step.
+Open index.html in a modern browser, or publish the repository as a static site. No dependency-install step is required.
 
 ## Project structure
 - index.html — match setup, rules, and game interface.
 - styles.css — responsive visual styling and action controls.
-- src/main.js — Canvas rendering, local match loop, controls, scoring, and AI.
+- src/main.js — Canvas rendering, local match loop, possession, actions, scoring, and AI.
 - docs/architecture.md — planned system architecture and phases.
 
 ## Roadmap
-1. Playable local match prototype and gameplay refinement.
+1. Refine and test local 1v1, 2v2, and 3v3 gameplay.
 2. Supabase project, PostgreSQL schema, and Row Level Security.
 3. Authentication and player profiles.
 4. Persisted match history.
@@ -39,9 +42,9 @@ Open index.html in a modern browser, or publish the repository as a static site.
 ## Current limitations
 - Matches are local and offline. There is no online multiplayer.
 - Scores are not yet persisted to Supabase or an account.
-- Opponent behaviour is deliberately lightweight prototype AI, not advanced tactical AI.
+- Opponent behaviour is lightweight prototype AI, not advanced tactical AI.
 - Browser-only scores are not trustworthy for competitive leaderboards. Secure competitive multiplayer will require server-authoritative match simulation and validation.
-- The visuals are currently drawn in Canvas, using procedural court details rather than final illustrated art assets.
+- The visuals are drawn in Canvas, using procedural court details rather than final illustrated art assets.
 
 ## Security
 Do not commit private credentials. Supabase client configuration will be introduced only in the backend integration phase, using public client configuration and database Row Level Security where appropriate.
