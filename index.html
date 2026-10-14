@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#10130f">
-  <meta name="description" content="SMALL POLES — fast, Ghana-inspired street football. Pick your side and settle the score.">
-  <title>SMALL POLES — Street Football</title>
+  <meta name="description" content="SMALL POLES — Ghanaian neighbourhood street football. Hit the marked brick on the wall to score.">
+  <title>SMALL POLES — Ghanaian Street Football</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./src/main.js"></script>
 </head>
@@ -18,26 +18,26 @@
       </a>
       <div class="topbar-right">
         <span class="origin"><i class="live-dot"></i> BORN IN GHANA · BUILT FOR THE WORLD</span>
-        <span class="build-tag">LOCAL PLAY</span>
+        <span class="build-tag">STREET RULES</span>
       </div>
     </header>
 
     <main>
       <section class="intro-layout" id="introPanel">
         <div class="intro-copy">
-          <p class="eyebrow"><span class="ghana-stripe" aria-hidden="true"></span> STREET FOOTBALL, GHANA STYLE</p>
+          <p class="eyebrow"><span class="ghana-stripe" aria-hidden="true"></span> GHANAIAN STREET FOOTBALL</p>
           <h1>BIG SKILLS.<br><span>SMALL POLES.</span></h1>
-          <p class="lead">Small space. Big energy. No excuses.</p>
-          <p class="body-copy">Call your side, step into the cage, and settle the score. Quick matches inspired by the football played on neighbourhood pitches across Ghana.</p>
+          <p class="lead">Dust, walls, one brick. Settle it.</p>
+          <p class="body-copy">Step into a neighbourhood court inspired by the football played between red brick walls across Ghana. No perfect grass pitch. No goal nets. Pick your side, find your angle, and strike the marked brick to claim the pole.</p>
           <div class="feature-pills">
-            <span>⚡ Quick matches</span><span>🇬🇭 Homegrown energy</span><span>👟 Street rules</span>
+            <span>⚽ Hit the brick to score</span><span>🇬🇭 Neighbourhood energy</span><span>👟 1v1 · 2v2 · 3v3</span>
           </div>
         </div>
 
         <section class="setup-card" aria-labelledby="setupTitle">
-          <div class="card-kicker">MATCH DAY / 001</div>
+          <div class="card-kicker">MATCH DAY / 002</div>
           <h2 id="setupTitle">Pick your format</h2>
-          <p class="muted">You control the green side. The opposition won't make it easy.</p>
+          <p class="muted">You control the green side. The opposition will try to hit their pole too.</p>
 
           <fieldset class="mode-picker">
             <legend class="sr-only">Choose match format</legend>
@@ -47,11 +47,11 @@
             </label>
             <label class="mode-option">
               <input type="radio" name="matchMode" value="2">
-              <span class="mode-number">02</span><span class="mode-copy"><strong>2v2</strong><small>Bring a teammate</small></span><span class="mode-check" aria-hidden="true">✓</span>
+              <span class="mode-number">02</span><span class="mode-copy"><strong>2v2</strong><small>Pass and move with a teammate</small></span><span class="mode-check" aria-hidden="true">✓</span>
             </label>
             <label class="mode-option">
               <input type="radio" name="matchMode" value="3">
-              <span class="mode-number">03</span><span class="mode-copy"><strong>3v3</strong><small>Full small-sided chaos</small></span><span class="mode-check" aria-hidden="true">✓</span>
+              <span class="mode-number">03</span><span class="mode-copy"><strong>3v3</strong><small>More bodies, more street chaos</small></span><span class="mode-check" aria-hidden="true">✓</span>
             </label>
           </fieldset>
 
@@ -69,8 +69,8 @@
       <section class="game-section" id="gameSection" hidden aria-label="Football match">
         <div class="match-heading">
           <div>
-            <p class="eyebrow">ACCRA CAGE · LIVE MATCH</p>
-            <h2 id="matchTitle">1v1 STREET MATCH</h2>
+            <p class="eyebrow">NEIGHBOURHOOD COURT · LIVE MATCH</p>
+            <h2 id="matchTitle">1v1 SMALL POLES</h2>
           </div>
           <div class="match-actions">
             <button class="secondary-button" id="pauseMatch" type="button">Ⅱ Pause</button>
@@ -80,16 +80,16 @@
         </div>
 
         <div class="scoreboard" aria-live="polite">
-          <div class="team-label home-label"><span class="team-dot home-dot"></span><span>THE HOME SIDE</span></div>
+          <div class="team-label home-label"><span class="team-dot home-dot"></span><span>YOUR SIDE</span></div>
           <div class="score-numbers"><span id="homeScore">0</span><span class="score-dash">:</span><span id="awayScore">0</span></div>
           <div class="clock-block"><span class="clock-label">TIME LEFT</span><strong id="matchClock">02:00</strong></div>
-          <div class="team-label away-label"><span>THE AWAY SIDE</span><span class="team-dot away-dot"></span></div>
+          <div class="team-label away-label"><span>THE CHALLENGERS</span><span class="team-dot away-dot"></span></div>
         </div>
 
         <div class="pitch-frame" id="pitchFrame">
-          <canvas id="gameCanvas" width="1000" height="600" aria-label="Top-down street football match. Use WASD or arrow keys to move, and Space to shoot."></canvas>
+          <canvas id="gameCanvas" width="1000" height="600" aria-label="Top-down Ghanaian street football match. Hit the marked brick on the end wall to score. Use WASD or arrow keys to move, Space to shoot, P to pass, Shift to sprint, and C to celebrate."></canvas>
           <div class="game-overlay" id="pauseOverlay" hidden>
-            <div class="overlay-card"><p class="eyebrow">TAKE A BREATHER</p><h3>MATCH PAUSED</h3><p>The cage can wait. Your score is safe.</p><button class="primary-button" id="resumeMatch" type="button">RESUME MATCH</button></div>
+            <div class="overlay-card"><p class="eyebrow">TAKE A BREATHER</p><h3>MATCH PAUSED</h3><p>The court can wait. Your score is safe.</p><button class="primary-button" id="resumeMatch" type="button">RESUME MATCH</button></div>
           </div>
           <div class="game-overlay" id="resultOverlay" hidden>
             <div class="overlay-card result-card"><p class="eyebrow">FULL TIME</p><h3 id="resultHeadline">GAME OVER</h3><p id="resultSummary">The final whistle has gone.</p><div class="result-score" id="resultScore">0 — 0</div><button class="primary-button" id="playAgain" type="button">RUN IT BACK ↻</button><button class="secondary-button full-width" id="resultMenu" type="button">BACK TO MENU</button></div>
@@ -98,37 +98,35 @@
 
         <div class="below-pitch">
           <div class="controls-note">
-            <strong>HOW TO PLAY</strong>
-            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows move</span>
+            <strong>KEYBOARD</strong>
+            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows move</span>
+            <span><kbd>P</kbd> pass</span>
             <span><kbd>SPACE</kbd> shoot</span>
             <span><kbd>SHIFT</kbd> sprint</span>
+            <span><kbd>C</kbd> celebrate</span>
           </div>
-          <div class="match-hint" id="matchHint" role="status">Move into space. Get close to the ball, then shoot.</div>
+          <div class="match-hint" id="matchHint" role="status">Hit the marked brick on the far wall to score. Miss it and the ball rebounds.</div>
         </div>
 
-        <div class="touch-controls" id="touchControls" aria-label="Touch game controls">
-          <div class="touch-pad" aria-label="Movement controls">
-            <button type="button" data-control="up" aria-label="Move up">▲</button>
-            <div class="touch-pad-row"><button type="button" data-control="left" aria-label="Move left">◀</button><button type="button" data-control="down" aria-label="Move down">▼</button><button type="button" data-control="right" aria-label="Move right">▶</button></div>
-          </div>
-          <div class="touch-actions">
-            <button type="button" class="sprint-touch" data-control="sprint">SPRINT</button>
-            <button type="button" class="shoot-touch" data-control="shoot">SHOOT <span>●</span></button>
-          </div>
+        <div class="action-buttons" id="actionButtons" aria-label="Player actions">
+          <button type="button" class="action-button pass-action" data-control="pass"><span aria-hidden="true">↗</span><strong>PASS</strong><small>P</small></button>
+          <button type="button" class="action-button sprint-action" data-control="sprint"><span aria-hidden="true">⚡</span><strong>SPRINT</strong><small>HOLD</small></button>
+          <button type="button" class="action-button shoot-action" data-control="shoot"><span aria-hidden="true">●</span><strong>SHOOT</strong><small>SPACE</small></button>
+          <button type="button" class="action-button celebrate-action" data-control="celebrate"><span aria-hidden="true">✦</span><strong>CELEBRATE</strong><small>C</small></button>
         </div>
       </section>
 
       <section class="how-section" id="howToPlay">
         <div class="section-label">THE RULES ARE SIMPLE</div>
         <div class="how-grid">
-          <article><span class="how-index">01</span><h3>Pick your side</h3><p>Start solo or bring AI teammates into a 2v2 or 3v3 street battle.</p></article>
-          <article><span class="how-index">02</span><h3>Win the ball</h3><p>Move into position, get close to the ball, and hit shoot to drive it toward goal.</p></article>
-          <article><span class="how-index">03</span><h3>Settle the score</h3><p>Goals count immediately. When the clock hits zero, the final result is yours.</p></article>
+          <article><span class="how-index">01</span><h3>Find the pole</h3><p>Each end wall has one marked rectangular brick. Hit it with the ball to score. The rest of the wall sends the ball back.</p></article>
+          <article><span class="how-index">02</span><h3>Pass, sprint, shoot</h3><p>Use passes to find a teammate, sprint into space, then line up your shot. In 1v1, pass gives you a quick touch into space.</p></article>
+          <article><span class="how-index">03</span><h3>Own the court</h3><p>Play 1v1, 2v2, or 3v3 on a dusty enclosed court with brick walls, neighbourhood graffiti, and the occasional bit of litter.</p></article>
         </div>
       </section>
     </main>
 
-    <footer class="footer"><span>SMALL POLES <b>●</b> GHANA</span><span>BUILD 0.2 · PLAYABLE PROTOTYPE</span></footer>
+    <footer class="footer"><span>SMALL POLES <b>●</b> GHANA</span><span>BUILD 0.3 · STREET COURT UPDATE</span></footer>
   </div>
 </body>
 </html>
