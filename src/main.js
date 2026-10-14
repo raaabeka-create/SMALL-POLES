@@ -68,6 +68,11 @@ const state = {
   lastShot: -10,
   lastPass: -10,
   lastCpuShot: -10,
+  lastCpuAction: -10,
+  lastTackle: -10,
+  possessionId: null,
+  passTargetId: null,
+  pressProgress: 0,
   lastGoal: -10,
   goalFlash: 0,
   celebrationFlash: 0,
@@ -131,7 +136,9 @@ function makePlayer(team, index, count) {
     speed: index === 0 && home ? 225 : 183,
     isUser: home && index === 0,
     shirtNumber: index + 1,
-    celebrate: 0
+    celebrate: 0,
+    tackleCooldown: 0,
+    aiActionCooldown: 0
   };
 }
 
@@ -145,6 +152,11 @@ function resetMatch(mode, duration) {
   state.lastShot = -10;
   state.lastPass = -10;
   state.lastCpuShot = -10;
+  state.lastCpuAction = -10;
+  state.lastTackle = -10;
+  state.possessionId = null;
+  state.passTargetId = null;
+  state.pressProgress = 0;
   state.lastGoal = -10;
   state.goalFlash = 0;
   state.celebrationFlash = 0;
@@ -159,22 +171,12 @@ function resetMatch(mode, duration) {
   updateHud();
 }
 
+
 function resetPositions() {
-  const spread = state.mode === 1 ? [0] : state.mode === 2 ? [-62, 62] : [-100, 0, 100];
-  state.players.forEach(function (p) {
-    const offset = spread[p.index];
-    p.x = p.team === "home" ? 220 + (p.index === 0 ? 0 : 35) : WIDTH - 220 - (p.index === 0 ? 0 : 35);
-    p.y = HEIGHT / 2 + offset;
-    p.vx = 0;
-    p.vy = 0;
-    p.facingX = p.team === "home" ? 1 : -1;
-    p.facingY = 0;
-    p.celebrate = 0;
-  });
-  state.ball.x = WIDTH / 2;
-  state.ball.y = HEIGHT / 2;
-  state.ball.vx = 0;
-  state.ball.vy = 0;
+ const spread=state.mode===1?[0]:state.mode===2?[-62,62]:[-100,0,100];
+ state.players.forEach(function(p){const offset=spread[p.index];p.x=p.team==="home"?220+(p.index===0?0:35):WIDTH-220-(p.index===0?0:35);p.y=HEIGHT/2+offset;p.vx=0;p.vy=0;p.facingX=p.team==="home"?1:-1;p.facingY=0;p.celebrate=0;p.tackleCooldown=0;p.aiActionCooldown=0;});
+ state.ball.x=WIDTH/2;state.ball.y=HEIGHT/2;state.ball.vx=0;state.ball.vy=0;
+ state.possessionId="home-0";state.passTargetId=null;state.pressProgress=0;attachBallToCarrier();
 }
 
 function startMatch() {
@@ -187,7 +189,7 @@ function startMatch() {
   resultOverlay.hidden = true;
   pauseButton.textContent = "Ⅱ Pause";
   matchTitle.textContent = state.mode + "v" + state.mode + " SMALL POLES";
-  matchHint.textContent = "Hit the marked brick on the far wall to score. Miss it and the ball rebounds.";
+  matchHint.textContent = "You start with the ball. Arrows move · S pass/press · A shoot · D shove · hold E to sprint.";
   state.lastFrame = 0;
   requestAnimationFrame(gameLoop);
   gameSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -285,15 +287,8 @@ function scoreGoal(scoringTeam) {
   resetPositions();
 }
 
-function getUserDirection() {
-  let x = 0;
-  let y = 0;
-  if (state.keys.has("ArrowLeft") || state.keys.has("KeyA") || state.touch.has("left")) x -= 1;
-  if (state.keys.has("ArrowRight") || state.keys.has("KeyD") || state.touch.has("right")) x += 1;
-  if (state.keys.has("ArrowUp") || state.keys.has("KeyW") || state.touch.has("up")) y -= 1;
-  if (state.keys.has("ArrowDown") || state.keys.has("KeyS") || state.touch.has("down")) y += 1;
-  return normalize(x, y);
-}
+
+function getUserDirection(){let x=0,y=0;if(state.keys.has("ArrowLeft")||state.touch.has("left"))x-=1;if(state.keys.has("ArrowRight")||state.touch.has("right"))x+=1;if(state.keys.has("ArrowUp")||state.touch.has("up"))y-=1;if(state.keys.has("ArrowDown")||state.touch.has("down"))y+=1;return normalize(x,y);}
 
 function getFacing(player) {
   const direction = getUserDirection();
@@ -301,54 +296,31 @@ function getFacing(player) {
   return normalize(player.facingX, player.facingY);
 }
 
-function userShoot() {
-  if (state.phase !== "playing" || state.elapsed - state.lastShot < 0.28) return;
-  const player = state.players.find(function (p) { return p.isUser; });
-  if (!player || distance(player, state.ball) > 58) {
-    matchHint.textContent = "Get closer to the ball before shooting.";
-    return;
-  }
-  const inputDirection = getUserDirection();
-  let direction;
-  if (Math.hypot(inputDirection.x, inputDirection.y) > 0.1) {
-    direction = inputDirection;
-    if (direction.x >= -0.05 && direction.x < 0.25) {
-      direction = normalize(0.25, direction.y);
-    }
-  } else {
-    direction = normalize(WIDTH - WALL - state.ball.x, HEIGHT / 2 - state.ball.y);
-  }
-  state.ball.vx = direction.x * 535 + player.vx * 0.38;
-  state.ball.vy = direction.y * 535 + player.vy * 0.38;
-  state.lastShot = state.elapsed;
-  player.facingX = direction.x;
-  player.facingY = direction.y;
-  matchHint.textContent = "Shot away — aim for the highlighted brick on the wall!";
+
+function userShoot(){
+ if(state.phase!=="playing"||state.elapsed-state.lastShot<0.28)return;
+ const player=state.players.find(function(p){return p.isUser;});
+ if(!player||state.possessionId!==player.id){matchHint.textContent="Win the ball first, then press A to shoot.";return;}
+ attachBallToCarrier();const inputDirection=getUserDirection();let direction;
+ if(Math.hypot(inputDirection.x,inputDirection.y)>0.1)direction=normalize(Math.max(0.28,inputDirection.x+0.52),inputDirection.y*0.9);
+ else direction=normalize(WIDTH-WALL-state.ball.x,HEIGHT/2-state.ball.y);
+ state.possessionId=null;state.passTargetId=null;state.ball.vx=direction.x*590+player.vx*0.48;state.ball.vy=direction.y*590+player.vy*0.48;
+ state.lastShot=state.elapsed;player.facingX=direction.x;player.facingY=direction.y;matchHint.textContent="Shot fired. Use the angle to bend it toward the marked brick.";
 }
 
-function userPass() {
-  if (state.phase !== "playing" || state.elapsed - state.lastPass < 0.35) return;
-  const player = state.players.find(function (p) { return p.isUser; });
-  if (!player || distance(player, state.ball) > 58) {
-    matchHint.textContent = "Get close to the ball before passing.";
-    return;
-  }
-  const teammate = state.players
-    .filter(function (p) { return p.team === "home" && !p.isUser; })
-    .sort(function (a, b) { return distance(a, state.ball) - distance(b, state.ball); })[0];
-  let direction;
-  if (teammate) {
-    direction = normalize(teammate.x - state.ball.x, teammate.y - state.ball.y);
-    matchHint.textContent = "Pass played to your teammate.";
-  } else {
-    direction = getFacing(player);
-    matchHint.textContent = "Quick touch into space — move onto it.";
-  }
-  state.ball.vx = direction.x * (teammate ? 340 : 300) + player.vx * 0.24;
-  state.ball.vy = direction.y * (teammate ? 340 : 300) + player.vy * 0.24;
-  state.lastPass = state.elapsed;
-  player.facingX = direction.x;
-  player.facingY = direction.y;
+
+function userPass(){
+ if(state.phase!=="playing"||state.elapsed-state.lastPass<0.24)return;
+ const player=state.players.find(function(p){return p.isUser;});
+ if(!player||state.possessionId!==player.id){matchHint.textContent="You are defending — hold S to press and win the ball.";return;}
+ const teammate=state.players.filter(function(p){return p.team==="home"&&!p.isUser;}).sort(function(a,b){
+  const scoreA=distance(a,state.ball)+Math.max(0,player.x-a.x)*0.45,scoreB=distance(b,state.ball)+Math.max(0,player.x-b.x)*0.45;return scoreA-scoreB;
+ })[0];
+ attachBallToCarrier();let direction;
+ if(teammate){direction=normalize(teammate.x+teammate.vx*0.22-state.ball.x,teammate.y+teammate.vy*0.22-state.ball.y);state.passTargetId=teammate.id;matchHint.textContent="Pass played. Your teammate will control it unless a defender intercepts.";}
+ else{direction=normalize(WIDTH-WALL-state.ball.x,HEIGHT/2-state.ball.y);state.passTargetId=null;matchHint.textContent="No teammate in 1v1 — quick pass into space.";}
+ state.possessionId=null;const passSpeed=teammate?clamp(distance(player,teammate)*1.15,300,430):330;
+ state.ball.vx=direction.x*passSpeed+player.vx*0.25;state.ball.vy=direction.y*passSpeed+player.vy*0.25;state.lastPass=state.elapsed;player.facingX=direction.x;player.facingY=direction.y;
 }
 
 function userCelebrate() {
@@ -360,22 +332,13 @@ function userCelebrate() {
   matchHint.textContent = "Big talk! Now hit the pole.";
 }
 
-function moveUser(player, dt) {
-  const direction = getUserDirection();
-  const sprinting = state.keys.has("ShiftLeft") || state.keys.has("ShiftRight") || state.touch.has("sprint");
-  const maxSpeed = player.speed * (sprinting ? 1.55 : 1);
-  const acceleration = sprinting ? 1120 : 950;
-  player.vx += direction.x * acceleration * dt;
-  player.vy += direction.y * acceleration * dt;
-  const speed = Math.hypot(player.vx, player.vy);
-  if (speed > maxSpeed) {
-    player.vx = player.vx / speed * maxSpeed;
-    player.vy = player.vy / speed * maxSpeed;
-  }
-  if (direction.x !== 0 || direction.y !== 0) {
-    player.facingX = direction.x;
-    player.facingY = direction.y;
-  }
+
+function moveUser(player,dt){
+ const direction=getUserDirection();const sprinting=state.keys.has("KeyE")||state.keys.has("ShiftLeft")||state.keys.has("ShiftRight")||state.touch.has("sprint");
+ const hasBall=state.possessionId===player.id,maxSpeed=player.speed*(sprinting?(hasBall?1.3:1.62):1),acceleration=sprinting?1180:950;
+ player.vx+=direction.x*acceleration*dt;player.vy+=direction.y*acceleration*dt;const speed=Math.hypot(player.vx,player.vy);
+ if(speed>maxSpeed){player.vx=player.vx/speed*maxSpeed;player.vy=player.vy/speed*maxSpeed;}
+ if(direction.x!==0||direction.y!==0){player.facingX=direction.x;player.facingY=direction.y;}
 }
 
 function nearestBallPlayer(team, excludeUser) {
@@ -392,149 +355,99 @@ function nearestBallPlayer(team, excludeUser) {
   return chosen;
 }
 
-function moveAI(player, dt) {
-  const isHome = player.team === "home";
-  const targetPoleX = isHome ? WIDTH - WALL : WALL;
-  const homeChaser = nearestBallPlayer("home", true);
-  const awayChaser = nearestBallPlayer("away", false);
-  let targetX = player.x;
-  let targetY = player.y;
-  const chaser = isHome ? homeChaser : awayChaser;
-  const isChaser = chaser && chaser.id === player.id;
-  const ballNear = distance(player, state.ball) < 260;
 
-  if (isChaser || (isHome && ballNear && !player.isUser)) {
-    targetX = state.ball.x + (isHome ? -18 : 18);
-    targetY = state.ball.y;
-  } else {
-    const lane = state.mode === 1 ? 0 : (player.index - (state.mode - 1) / 2) * 70;
-    targetX = isHome ? clamp(state.ball.x - 100 - player.index * 18, 90, WIDTH / 2 - 70)
-                     : clamp(state.ball.x + 100 + player.index * 18, WIDTH / 2 + 70, WIDTH - 90);
-    targetY = clamp(state.ball.y + lane, 70, HEIGHT - 70);
-    if (isHome && player.index > 0) targetX = Math.min(targetX, WIDTH * 0.43);
-    if (!isHome && player.index > 0) targetX = Math.max(targetX, WIDTH * 0.57);
-  }
-
-  const direction = normalize(targetX - player.x, targetY - player.y);
-  const speed = player.speed * (isChaser ? 1.04 : 0.82);
-  player.vx += direction.x * 620 * dt;
-  player.vy += direction.y * 620 * dt;
-  const currentSpeed = Math.hypot(player.vx, player.vy);
-  if (currentSpeed > speed) {
-    player.vx = player.vx / currentSpeed * speed;
-    player.vy = player.vy / currentSpeed * speed;
-  }
-  if (Math.hypot(direction.x, direction.y) > 0.1) {
-    player.facingX = direction.x;
-    player.facingY = direction.y;
-  }
-
-  if (!isHome && distance(player, state.ball) < 43 && state.elapsed - state.lastCpuShot > 0.85) {
-    const shotDirection = normalize(targetPoleX - state.ball.x, HEIGHT / 2 - state.ball.y);
-    state.ball.vx = shotDirection.x * 405 + player.vx * 0.25;
-    state.ball.vy = shotDirection.y * 405 + player.vy * 0.25;
-    state.lastCpuShot = state.elapsed;
-  }
+function moveAI(player,dt){
+ const isHome=player.team==="home",hasPossession=state.possessionId===player.id,carrier=getPlayerById(state.possessionId),ballTarget=carrier||state.ball,targetPoleX=isHome?WIDTH-WALL:WALL;
+ let targetX=player.x,targetY=player.y;
+ if(hasPossession){targetX=targetPoleX+(isHome?-165:165);targetY=clamp(HEIGHT/2+(HEIGHT/2-player.y)*0.18,95,HEIGHT-95);}
+ else if(carrier&&carrier.team!==player.team){
+  const shouldChase=isHome?(!player.isUser&&distance(player,ballTarget)<300):distance(player,ballTarget)<340;
+  if(shouldChase){targetX=ballTarget.x+(isHome?-22:22);targetY=ballTarget.y;}
+  else{const lane=state.mode===1?0:(player.index-(state.mode-1)/2)*76;targetX=isHome?clamp(ballTarget.x-110,75,WIDTH/2-65):clamp(ballTarget.x+110,WIDTH/2+65,WIDTH-75);targetY=clamp(ballTarget.y+lane,70,HEIGHT-70);}
+ }else if(carrier&&carrier.team===player.team){
+  const lane=state.mode===1?0:(player.index-(state.mode-1)/2)*88;targetX=isHome?clamp(ballTarget.x+80,100,WIDTH-100):clamp(ballTarget.x-80,100,WIDTH-100);targetY=clamp(ballTarget.y+lane,70,HEIGHT-70);
+ }else{
+  const chaser=nearestBallPlayer(player.team,false);
+  if(chaser&&chaser.id===player.id){targetX=state.ball.x+(isHome?-18:18);targetY=state.ball.y;}
+  else{const lane=state.mode===1?0:(player.index-(state.mode-1)/2)*75;targetX=isHome?clamp(state.ball.x-100,80,WIDTH/2-65):clamp(state.ball.x+100,WIDTH/2+65,WIDTH-80);targetY=clamp(state.ball.y+lane,70,HEIGHT-70);}
+ }
+ const direction=normalize(targetX-player.x,targetY-player.y),speed=player.speed*(hasPossession?0.9:0.95);
+ player.vx+=direction.x*650*dt;player.vy+=direction.y*650*dt;const currentSpeed=Math.hypot(player.vx,player.vy);
+ if(currentSpeed>speed){player.vx=player.vx/currentSpeed*speed;player.vy=player.vy/currentSpeed*speed;}
+ if(Math.hypot(direction.x,direction.y)>0.1){player.facingX=direction.x;player.facingY=direction.y;}
 }
 
-function updatePlayers(dt) {
-  state.players.forEach(function (p) {
-    if (p.celebrate > 0) p.celebrate = Math.max(0, p.celebrate - dt);
-    if (p.isUser) moveUser(p, dt);
-    else moveAI(p, dt);
 
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.vx *= Math.pow(0.0009, dt);
-    p.vy *= Math.pow(0.0009, dt);
-    p.x = clamp(p.x, WALL + PLAYER_RADIUS, WIDTH - WALL - PLAYER_RADIUS);
-    p.y = clamp(p.y, WALL + PLAYER_RADIUS, HEIGHT - WALL - PLAYER_RADIUS);
-  });
-
-  for (let i = 0; i < state.players.length; i += 1) {
-    for (let j = i + 1; j < state.players.length; j += 1) {
-      const a = state.players[i];
-      const b = state.players[j];
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const d = Math.hypot(dx, dy);
-      const minD = a.radius + b.radius - 2;
-      if (d > 0 && d < minD) {
-        const push = (minD - d) / 2;
-        const nx = dx / d;
-        const ny = dy / d;
-        a.x -= nx * push;
-        a.y -= ny * push;
-        b.x += nx * push;
-        b.y += ny * push;
-      }
-    }
+function updatePlayers(dt){
+ state.players.forEach(function(p){if(p.celebrate>0)p.celebrate=Math.max(0,p.celebrate-dt);p.tackleCooldown=Math.max(0,(p.tackleCooldown||0)-dt);if(p.isUser)moveUser(p,dt);else moveAI(p,dt);
+  p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(0.0009,dt);p.vy*=Math.pow(0.0009,dt);p.x=clamp(p.x,WALL+PLAYER_RADIUS,WIDTH-WALL-PLAYER_RADIUS);p.y=clamp(p.y,WALL+PLAYER_RADIUS,HEIGHT-WALL-PLAYER_RADIUS);
+ });
+ for(let i=0;i<state.players.length;i+=1)for(let j=i+1;j<state.players.length;j+=1){
+  const a=state.players[i],b=state.players[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),minD=a.radius+b.radius-2;
+  if(d>0&&d<minD){const push=(minD-d)/2,nx=dx/d,ny=dy/d;a.x-=nx*push;a.y-=ny*push;b.x+=nx*push;b.y+=ny*push;
+   if(state.possessionId===a.id&&b.team!==a.team&&b.isUser&&state.keys.has("KeyS"))attemptSteal(b,a,0.7);
+   else if(state.possessionId===b.id&&a.team!==b.team&&a.isUser&&state.keys.has("KeyS"))attemptSteal(a,b,0.7);
   }
+ }
 }
 
-function updateBall(dt) {
-  const ball = state.ball;
-  ball.x += ball.vx * dt;
-  ball.y += ball.vy * dt;
-  ball.vx *= Math.pow(0.19, dt);
-  ball.vy *= Math.pow(0.19, dt);
 
-  if (ball.y < WALL + BALL_RADIUS) {
-    ball.y = WALL + BALL_RADIUS;
-    ball.vy = Math.abs(ball.vy) * 0.78;
-  }
-  if (ball.y > HEIGHT - WALL - BALL_RADIUS) {
-    ball.y = HEIGHT - WALL - BALL_RADIUS;
-    ball.vy = -Math.abs(ball.vy) * 0.78;
-  }
-
-  if (ball.x < WALL + BALL_RADIUS || ball.x > WIDTH - WALL - BALL_RADIUS) {
-    const onPole = ball.y >= POLE_TOP - BALL_RADIUS && ball.y <= POLE_BOTTOM + BALL_RADIUS;
-    const hitRight = ball.x > WIDTH / 2;
-    if (onPole) {
-      scoreGoal(hitRight ? "home" : "away");
-      return;
-    }
-    if (ball.x < WALL + BALL_RADIUS) {
-      ball.x = WALL + BALL_RADIUS;
-      ball.vx = Math.abs(ball.vx) * 0.82;
-    } else {
-      ball.x = WIDTH - WALL - BALL_RADIUS;
-      ball.vx = -Math.abs(ball.vx) * 0.82;
-    }
-  }
-
-  state.players.forEach(function (p) {
-    const dx = ball.x - p.x;
-    const dy = ball.y - p.y;
-    const d = Math.hypot(dx, dy);
-    const minD = p.radius + BALL_RADIUS;
-    if (d > 0 && d < minD) {
-      const nx = dx / d;
-      const ny = dy / d;
-      ball.x = p.x + nx * (minD + 1);
-      ball.y = p.y + ny * (minD + 1);
-      const impact = Math.max(110, Math.hypot(p.vx, p.vy) * 0.8);
-      ball.vx += nx * impact + p.vx * 0.34;
-      ball.vy += ny * impact + p.vy * 0.34;
-      const ballSpeed = Math.hypot(ball.vx, ball.vy);
-      if (ballSpeed > 560) {
-        ball.vx = ball.vx / ballSpeed * 560;
-        ball.vy = ball.vy / ballSpeed * 560;
-      }
-    }
-  });
+function getPlayerById(id){return state.players.find(function(p){return p.id===id;})||null;}
+function attachBallToCarrier(){
+ const carrier=getPlayerById(state.possessionId);if(!carrier){state.possessionId=null;return;}
+ const facing=normalize(carrier.facingX,carrier.facingY),direction=Math.hypot(facing.x,facing.y)>0.1?facing:{x:carrier.team==="home"?1:-1,y:0},offset=carrier.radius+BALL_RADIUS+2;
+ state.ball.x=clamp(carrier.x+direction.x*offset,WALL+BALL_RADIUS,WIDTH-WALL-BALL_RADIUS);state.ball.y=clamp(carrier.y+direction.y*offset,WALL+BALL_RADIUS,HEIGHT-WALL-BALL_RADIUS);
+ state.ball.vx=carrier.vx*0.92;state.ball.vy=carrier.vy*0.92;
+}
+function acquireBall(player,message){
+ state.possessionId=player.id;state.passTargetId=null;state.pressProgress=0;
+ player.facingX=player.team==="home"?Math.max(0.35,player.facingX):Math.min(-0.35,player.facingX);if(message)matchHint.textContent=message;attachBallToCarrier();
+}
+function attemptSteal(defender,carrier,strength){
+ if(!defender||!carrier||defender.team===carrier.team||state.possessionId!==carrier.id)return false;
+ if(state.elapsed-state.lastTackle<0.45||distance(defender,carrier)>56)return false;
+ state.lastTackle=state.elapsed;defender.tackleCooldown=0.7;const toward=normalize(carrier.x-defender.x,carrier.y-defender.y);
+ carrier.vx+=toward.x*125;carrier.vy+=toward.y*125;defender.vx-=toward.x*70;defender.vy-=toward.y*70;
+ const successChance=clamp(strength-distance(defender,carrier)/150+(defender.vx*toward.x+defender.vy*toward.y)/500,0.18,0.88);
+ if(Math.random()<successChance){acquireBall(defender,defender.isUser?"Clean tackle! You won possession.":"The ball has been stolen. Press back!");return true;}
+ matchHint.textContent=defender.isUser?"Shoulder challenge — stay close and press again.":"The carrier shrugged off the challenge.";return false;
+}
+function updatePressing(dt){
+ const user=state.players.find(function(p){return p.isUser;}),carrier=getPlayerById(state.possessionId),pressing=state.keys.has("KeyS")||state.touch.has("press");
+ if(!user||!carrier||carrier.team===user.team||!pressing){state.pressProgress=Math.max(0,state.pressProgress-dt*1.7);return;}
+ const d=distance(user,carrier);if(d<=76){state.pressProgress+=dt*(d<43?1.5:0.8);if(state.pressProgress>=0.95){state.pressProgress=0;attemptSteal(user,carrier,d<43?0.84:0.62);}}
+ else state.pressProgress=Math.max(0,state.pressProgress-dt*2.2);
+}
+function updateAIActions(){
+ const carrier=getPlayerById(state.possessionId);if(!carrier||carrier.isUser||state.elapsed-state.lastCpuAction<0.8)return;
+ const targetX=carrier.team==="home"?WIDTH-WALL:WALL,toPole=distance(carrier,{x:targetX,y:HEIGHT/2}),opponent=nearestBallPlayer(carrier.team==="home"?"away":"home",false),underPressure=opponent&&distance(opponent,carrier)<58;
+ const teammates=state.players.filter(function(p){return p.team===carrier.team&&p.id!==carrier.id;}).sort(function(a,b){return distance(a,carrier)-distance(b,carrier);});
+ if(toPole<345||(carrier.team==="away"&&toPole<430&&!underPressure)){
+  attachBallToCarrier();const direction=normalize(targetX-state.ball.x,HEIGHT/2-state.ball.y);state.possessionId=null;state.passTargetId=null;state.ball.vx=direction.x*510+carrier.vx*0.35;state.ball.vy=direction.y*510+carrier.vy*0.35;state.lastCpuShot=state.elapsed;state.lastCpuAction=state.elapsed;matchHint.textContent=carrier.team==="away"?"Opponent shoots for the pole!":"Your teammate takes the shot!";
+ }else if(teammates.length&&(underPressure||state.elapsed-state.lastCpuAction>2.2)){
+  attachBallToCarrier();const target=teammates[0],direction=normalize(target.x+target.vx*0.2-state.ball.x,target.y+target.vy*0.2-state.ball.y);state.possessionId=null;state.passTargetId=target.id;state.ball.vx=direction.x*350+carrier.vx*0.2;state.ball.vy=direction.y*350+carrier.vy*0.2;state.lastCpuAction=state.elapsed;
+ }
+}
+function updateBall(dt){
+ const ball=state.ball;if(state.possessionId){attachBallToCarrier();return;}
+ ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;ball.vx*=Math.pow(0.19,dt);ball.vy*=Math.pow(0.19,dt);
+ if(ball.y<WALL+BALL_RADIUS){ball.y=WALL+BALL_RADIUS;ball.vy=Math.abs(ball.vy)*0.78;}
+ if(ball.y>HEIGHT-WALL-BALL_RADIUS){ball.y=HEIGHT-WALL-BALL_RADIUS;ball.vy=-Math.abs(ball.vy)*0.78;}
+ if(ball.x<WALL+BALL_RADIUS||ball.x>WIDTH-WALL-BALL_RADIUS){
+  const onPole=ball.y>=POLE_TOP-BALL_RADIUS&&ball.y<=POLE_BOTTOM+BALL_RADIUS,hitRight=ball.x>WIDTH/2;
+  if(onPole){scoreGoal(hitRight?"home":"away");return;}
+  if(ball.x<WALL+BALL_RADIUS){ball.x=WALL+BALL_RADIUS;ball.vx=Math.abs(ball.vx)*0.82;}else{ball.x=WIDTH-WALL-BALL_RADIUS;ball.vx=-Math.abs(ball.vx)*0.82;}
+ }
+ const speed=Math.hypot(ball.vx,ball.vy);let winner=null,bestDistance=Infinity;
+ state.players.forEach(function(p){const d=distance(p,ball),catchRadius=p.radius+BALL_RADIUS+(state.passTargetId===p.id?8:0),canControl=d<=catchRadius&&(speed<365||d<15||state.passTargetId===p.id);if(canControl&&d<bestDistance){bestDistance=d;winner=p;}});
+ if(winner){const message=state.passTargetId?(winner.id===state.passTargetId?"Pass completed — teammate has control.":(winner.team==="home"?"You recovered the loose ball.":"Pass intercepted! Win it back.")):(winner.isUser?"Ball recovered. Your move.":(winner.team==="home"?"Your teammate controls the ball.":"Opponent takes possession."));acquireBall(winner,message);return;}
+ if(state.passTargetId&&speed<80)state.passTargetId=null;
 }
 
-function updateGame(dt) {
-  state.elapsed += dt;
-  state.timeLeft = Math.max(0, state.timeLeft - dt);
-  state.goalFlash = Math.max(0, state.goalFlash - dt);
-  state.celebrationFlash = Math.max(0, state.celebrationFlash - dt);
-  updatePlayers(dt);
-  updateBall(dt);
-  updateHud();
-  if (state.timeLeft <= 0) finishMatch();
+
+function updateGame(dt){
+ state.elapsed+=dt;state.timeLeft=Math.max(0,state.timeLeft-dt);state.goalFlash=Math.max(0,state.goalFlash-dt);state.celebrationFlash=Math.max(0,state.celebrationFlash-dt);
+ updatePlayers(dt);updatePressing(dt);updateAIActions();updateBall(dt);updateHud();if(state.timeLeft<=0)finishMatch();
 }
 
 function drawBrickWall() {
@@ -820,58 +733,36 @@ function gameLoop(timestamp) {
   if (state.phase === "playing") requestAnimationFrame(gameLoop);
 }
 
-function handleKeyDown(event) {
-  const blocked = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"];
-  if (blocked.includes(event.code)) event.preventDefault();
-  if (event.code === "Escape" && (state.phase === "playing" || state.phase === "paused")) {
-    togglePause();
-    return;
-  }
-  if (event.code === "Space" && !event.repeat) {
-    userShoot();
-    return;
-  }
-  if (event.code === "KeyP" && !event.repeat) {
-    userPass();
-    return;
-  }
-  if (event.code === "KeyC" && !event.repeat) {
-    userCelebrate();
-    return;
-  }
-  state.keys.add(event.code);
+
+function handleKeyDown(event){
+ const blocked=["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"];if(blocked.includes(event.code))event.preventDefault();
+ if(event.code==="Escape"&&(state.phase==="playing"||state.phase==="paused")){togglePause();return;}
+ if(event.code==="KeyA"&&!event.repeat){userShoot();return;}
+ if(event.code==="KeyS"){const user=state.players.find(function(p){return p.isUser;});if(state.possessionId===(user&&user.id)){if(!event.repeat)userPass();}else state.keys.add("KeyS");return;}
+ if(event.code==="KeyD"&&!event.repeat){userShove();return;}
+ if(event.code==="KeyC"&&!event.repeat){userCelebrate();return;}
+ state.keys.add(event.code);
 }
 
-function handleKeyUp(event) {
-  state.keys.delete(event.code);
-}
+function handleKeyUp(event){state.keys.delete(event.code);}
 
-function bindTouchControls() {
-  document.querySelectorAll("[data-control]").forEach(function (button) {
-    const control = button.dataset.control;
-    const activate = function (event) {
-      event.preventDefault();
-      if (state.phase !== "playing") return;
-      if (control === "shoot") userShoot();
-      else if (control === "pass") userPass();
-      else if (control === "celebrate") userCelebrate();
-      else state.touch.add(control);
-      button.classList.add("is-active");
-      if (button.setPointerCapture && event.pointerId !== undefined) {
-        try { button.setPointerCapture(event.pointerId); } catch (error) { /* capture is optional */ }
-      }
-    };
-    const deactivate = function (event) {
-      if (event) event.preventDefault();
-      state.touch.delete(control);
-      button.classList.remove("is-active");
-    };
-    button.addEventListener("pointerdown", activate);
-    button.addEventListener("pointerup", deactivate);
-    button.addEventListener("pointercancel", deactivate);
-    button.addEventListener("lostpointercapture", deactivate);
-    button.addEventListener("contextmenu", function (event) { event.preventDefault(); });
-  });
+
+function userShove(){
+ if(state.phase!=="playing")return;const user=state.players.find(function(p){return p.isUser;});
+ if(!user||state.possessionId===user.id){matchHint.textContent="Shove is a defensive move — use it when the other side has the ball.";return;}
+ const carrier=getPlayerById(state.possessionId);if(!carrier||carrier.team===user.team||distance(user,carrier)>72){matchHint.textContent="Get close to the ball carrier before shoving.";return;}attemptSteal(user,carrier,0.9);
+}
+function bindTouchControls(){
+ document.querySelectorAll("[data-control]").forEach(function(button){const control=button.dataset.control;
+  const activate=function(event){event.preventDefault();if(state.phase!=="playing")return;
+   if(control==="shoot")userShoot();
+   else if(control==="action"){const user=state.players.find(function(p){return p.isUser;});if(state.possessionId===(user&&user.id))userPass();else state.touch.add("press");}
+   else if(control==="shove")userShove();else if(control==="celebrate")userCelebrate();else state.touch.add(control);
+   button.classList.add("is-active");if(button.setPointerCapture&&event.pointerId!==undefined){try{button.setPointerCapture(event.pointerId);}catch(error){}}
+  };
+  const deactivate=function(event){if(event)event.preventDefault();state.touch.delete(control);if(control==="action")state.touch.delete("press");button.classList.remove("is-active");};
+  button.addEventListener("pointerdown",activate);button.addEventListener("pointerup",deactivate);button.addEventListener("pointercancel",deactivate);button.addEventListener("lostpointercapture",deactivate);button.addEventListener("contextmenu",function(event){event.preventDefault();});
+ });
 }
 
 startButton.addEventListener("click", startMatch);
