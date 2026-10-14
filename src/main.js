@@ -449,7 +449,11 @@ function updateBall(dt){
 
 function updateGame(dt){
  state.elapsed+=dt;state.timeLeft=Math.max(0,state.timeLeft-dt);state.goalFlash=Math.max(0,state.goalFlash-dt);state.celebrationFlash=Math.max(0,state.celebrationFlash-dt);
- updatePlayers(dt);updatePressing(dt);updateAIActions();updateBall(dt);updateHud();if(state.timeLeft<=0)finishMatch();
+ updatePlayers(dt);updatePressing(dt);updateAIActions();updateBall(dt);updateHud();
+ const user=state.players.find(function(p){return p.isUser;}),hasUserBall=Boolean(user&&state.possessionId===user.id);
+ if(actionLabel)actionLabel.textContent=hasUserBall?"PASS":"PRESS";
+ if(actionHint)actionHint.textContent=hasUserBall?"S · TO TEAMMATE":"S · HOLD";
+ if(state.timeLeft<=0)finishMatch();
 }
 
 function drawBrickWall() {
