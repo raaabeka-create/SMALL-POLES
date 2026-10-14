@@ -16,7 +16,8 @@ const ui = {
   clock: $("#matchClock"), resultHeadline: $("#resultHeadline"), resultSummary: $("#resultSummary"),
   resultScore: $("#resultScore"), hint: $("#matchHint"), actionLabel: $("#actionLabel"),
   actionHint: $("#actionHint"), pitchFrame: $("#pitchFrame"), careerLevel: $("#careerLevel"),
-  careerRecord: $("#careerRecord"), careerGoals: $("#careerGoals"), careerXP: $("#careerXP")
+  careerRecord: $("#careerRecord"), careerGoals: $("#careerGoals"), careerXP: $("#careerXP"),
+  careerProgressText: $("#careerProgressText"), careerProgressBar: $("#careerProgressBar")
 };
 const THREE_CDN_NOTE = "3D graphics need an internet connection to load Three.js the first time.";
 const COURT = { width: 22, length: 30, wallHeight: 3.2, halfW: 11, halfL: 15 };
@@ -27,6 +28,28 @@ const state = {
   carrier: null, shotCooldown: 0, hintCooldown: 0, elapsed: 0
 };
 let scene, camera, renderer, clock, courtGroup, ballMesh, ballShadow, targetMeshes = [], activeVenue = null;
+let audioContext = null;
+function playSfx(kind = "tap") {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    audioContext ||= new AudioCtx();
+    if (audioContext.state === "suspended") audioContext.resume();
+    const now = audioContext.currentTime;
+    const notes = kind === "goal" ? [523.25, 659.25, 783.99] : kind === "kick" ? [180, 120] : [330, 440];
+    notes.forEach((frequency, i) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = kind === "goal" ? "triangle" : "sine";
+      oscillator.frequency.setValueAtTime(frequency, now + i * .075);
+      gain.gain.setValueAtTime(.0001, now + i * .075);
+      gain.gain.exponentialRampToValueAtTime(kind === "goal" ? .09 : .035, now + i * .075 + .012);
+      gain.gain.exponentialRampToValueAtTime(.0001, now + i * .075 + (kind === "goal" ? .24 : .1));
+      oscillator.connect(gain); gain.connect(audioContext.destination);
+      oscillator.start(now + i * .075); oscillator.stop(now + i * .075 + (kind === "goal" ? .26 : .12));
+    });
+  } catch {}
+}
 let homeTarget, awayTarget, ambient, sun, cameraTarget = new THREE.Vector3();
 const held = new Set();
 
@@ -43,6 +66,9 @@ function paintCareer() {
   if (ui.careerRecord) ui.careerRecord.textContent = c.wins + "W · " + c.draws + "D · " + c.losses + "L";
   if (ui.careerGoals) ui.careerGoals.textContent = String(c.goals);
   if (ui.careerXP) ui.careerXP.textContent = c.xp + " XP";
+  const intoLevel = c.xp % 250;
+  if (ui.careerProgressText) ui.careerProgressText.textContent = intoLevel + " / 250 XP";
+  if (ui.careerProgressBar) ui.careerProgressBar.style.width = (intoLevel / 250 * 100) + "%";
 }
 function saveCareerResult() {
   if (state.careerSaved) return;
@@ -282,6 +308,7 @@ function resizeRenderer() {
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 function resetMatch() {
+  playSfx("tap");
   state.mode = Number(document.querySelector('input[name="matchMode"]:checked')?.value || 1);
   state.duration = Number($("#matchDuration")?.value || 120);
   state.remaining = state.duration; state.homeScore = 0; state.awayScore = 0; state.matchGoals = 0; state.careerSaved = false;
@@ -327,6 +354,10 @@ function endMatch() {
 }
 function score(team) {
   if (!state.running) return;
+  playSfx("goal");
+  ui.homeScore.classList.remove("score-pop"); ui.awayScore.classList.remove("score-pop");
+  const scoringElement = team === "home" ? ui.homeScore : ui.awayScore;
+  void scoringElement.offsetWidth; scoringElement.classList.add("score-pop");
   if (team === "home") { state.homeScore++; state.matchGoals++; } else state.awayScore++;
   ui.homeScore.textContent = String(state.homeScore); ui.awayScore.textContent = String(state.awayScore);
   setHint(team === "home" ? "BRICK! YOUR SIDE CLAIMS THE POLE." : "THE CHALLENGERS HIT THEIR BRICK.");
@@ -346,6 +377,7 @@ function nearestPlayer(x, z, team) {
 }
 function shoot(player, power) {
   if (!state.running || state.paused || state.shotCooldown > 0) return;
+  playSfx("kick");
   const b = state.ball;
   if (state.carrier !== player && Math.hypot(player.root.position.x - b.x, player.root.position.z - b.z) > 1.4) return;
   state.carrier = null; b.x = player.root.position.x; b.z = player.root.position.z - (player.team === "home" ? .45 : -.45); b.y = .42;
@@ -358,6 +390,7 @@ function shoot(player, power) {
 }
 function passBall(player) {
   if (state.carrier !== player) { pressBall(player); return; }
+  playSfx("tap");
   const teammate = state.players.filter(p => p.team === player.team && p !== player).sort((a, b) => {
     const da = Math.hypot(a.root.position.x - player.root.position.x, a.root.position.z - player.root.position.z);
     const db = Math.hypot(b.root.position.x - player.root.position.x, b.root.position.z - player.root.position.z); return da - db;
@@ -534,6 +567,7 @@ function togglePause() {
 }
 function returnToMenu() {
   state.running = false; state.paused = false; state.ended = false;
+  document.querySelectorAll(".score-pop").forEach(el => el.classList.remove("score-pop"));
   ui.intro.hidden = false; ui.game.hidden = true; ui.pauseOverlay.hidden = true; ui.resultOverlay.hidden = true;
 }
 function handleAction(action) {
