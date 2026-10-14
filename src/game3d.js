@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import { addNeighborhood } from "./neighborhood.js";
 
 /*
  * SMALL POLES 3D — procedural Three.js street-football prototype.
@@ -215,7 +216,9 @@ function init3D() {
   sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -19; sun.shadow.camera.right = 19;
   sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25; scene.add(sun);
   const bounce = new THREE.DirectionalLight("#d9e6cf", .65); bounce.position.set(9, 7, -12); scene.add(bounce);
-  createCourt(); createBall();
+  createCourt();
+  addNeighborhood(THREE, scene);
+  createBall();
   clock = new THREE.Clock();
   window.addEventListener("resize", resizeRenderer);
   renderer.setAnimationLoop(animate);
