@@ -172,3 +172,50 @@ kbd { display: inline-grid; min-width: 21px; height: 22px; place-items: center; 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+
+/* SMALL POLES street-court update */
+.pitch-frame { border-color: #805044; background: #9b7046; }
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.action-button {
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  color: var(--text);
+  text-align: left;
+  border: 1px solid #3c4636;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #20271e, #171c15);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.action-button > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: #303a2c; font-size: 17px; }
+.action-button strong { font-size: 11px; font-weight: 950; letter-spacing: .08em; }
+.action-button small { color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .05em; }
+.action-button.pass-action > span { color: #d4e8d4; }
+.action-button.sprint-action > span { color: var(--yellow); }
+.action-button.shoot-action { color: #15180f; border-color: var(--yellow); background: var(--yellow); }
+.action-button.shoot-action > span { color: #17190e; background: rgb(20 25 14 / 10%); }
+.action-button.shoot-action small { color: #494626; }
+.action-button.celebrate-action > span { color: var(--yellow); }
+.action-button.is-active { transform: translateY(1px) scale(.985); filter: brightness(1.18); }
+.action-button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+@media (max-width: 700px) {
+  .action-buttons { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+  .action-button { min-height: 68px; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 8px 3px; text-align: center; }
+  .action-button > span { width: 25px; height: 23px; font-size: 15px; background: transparent; }
+  .action-button strong { font-size: 9px; letter-spacing: .04em; }
+  .action-button small { font-size: 8px; }
+}
+@media (max-width: 360px) {
+  .action-button strong { font-size: 8px; }
+}
