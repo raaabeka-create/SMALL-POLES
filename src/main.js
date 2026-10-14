@@ -308,8 +308,16 @@ function userShoot() {
     matchHint.textContent = "Get closer to the ball before shooting.";
     return;
   }
-  let direction = getFacing(player);
-  if (direction.x < 0.05) direction = { x: 1, y: direction.y };
+  const inputDirection = getUserDirection();
+  let direction;
+  if (Math.hypot(inputDirection.x, inputDirection.y) > 0.1) {
+    direction = inputDirection;
+    if (direction.x >= -0.05 && direction.x < 0.25) {
+      direction = normalize(0.25, direction.y);
+    }
+  } else {
+    direction = normalize(WIDTH - WALL - state.ball.x, HEIGHT / 2 - state.ball.y);
+  }
   state.ball.vx = direction.x * 535 + player.vx * 0.38;
   state.ball.vy = direction.y * 535 + player.vy * 0.38;
   state.lastShot = state.elapsed;
@@ -536,19 +544,27 @@ function drawBrickWall() {
   ctx.fillRect(0, 0, WALL, HEIGHT);
   ctx.fillRect(WIDTH - WALL, 0, WALL, HEIGHT);
 
-  ctx.strokeStyle = COLORS.mortar;
   ctx.lineWidth = 1;
-  for (let y = 4; y < HEIGHT; y += 10) {
-    const offset = Math.floor(y / 10) % 2 ? 9 : 0;
-    for (let x = -10; x < WIDTH; x += 22) {
-      ctx.strokeRect(x + offset, y, 22, 10);
-    }
+  ctx.strokeStyle = COLORS.mortar;
+
+  // Brick courses on the top and bottom walls only.
+  for (let x = -22; x < WIDTH + 22; x += 22) {
+    const topOffset = Math.floor((x + 22) / 22) % 2 ? 0 : 10;
+    ctx.strokeRect(x + topOffset, 2, 22, 10);
+    ctx.strokeRect(x, 12, 22, 10);
+    ctx.strokeRect(x + topOffset, HEIGHT - 22, 22, 10);
+    ctx.strokeRect(x, HEIGHT - 12, 22, 10);
   }
-  for (let x = 0; x < WIDTH; x += 44) {
-    ctx.fillStyle = x % 88 === 0 ? COLORS.brick : COLORS.brickLight;
-    ctx.fillRect(x, 0, 22, WALL - 2);
-    ctx.fillRect(x + 22, HEIGHT - WALL + 2, 22, WALL - 2);
+
+  // Narrow brick courses on the left and right end walls.
+  for (let y = -22; y < HEIGHT + 22; y += 22) {
+    const sideOffset = Math.floor((y + 22) / 22) % 2 ? 0 : 10;
+    ctx.strokeRect(2, y + sideOffset, 10, 22);
+    ctx.strokeRect(12, y, 10, 22);
+    ctx.strokeRect(WIDTH - 22, y + sideOffset, 10, 22);
+    ctx.strokeRect(WIDTH - 12, y, 10, 22);
   }
+
   ctx.fillStyle = "#4a3028";
   ctx.fillRect(0, 0, WIDTH, 3);
   ctx.fillRect(0, HEIGHT - 3, WIDTH, 3);
