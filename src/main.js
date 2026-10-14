@@ -26,6 +26,8 @@ const resultHeadline = document.querySelector("#resultHeadline");
 const resultSummary = document.querySelector("#resultSummary");
 const resultScore = document.querySelector("#resultScore");
 const matchHint = document.querySelector("#matchHint");
+const actionLabel = document.querySelector("#actionLabel");
+const actionHint = document.querySelector("#actionHint");
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
