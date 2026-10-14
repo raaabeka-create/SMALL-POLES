@@ -26,7 +26,7 @@ const state = {
   keys: new Set(), touch: new Set(), players: [], ball: null,
   carrier: null, shotCooldown: 0, hintCooldown: 0, elapsed: 0
 };
-let scene, camera, renderer, clock, courtGroup, ballMesh, ballShadow, targetMeshes = [];
+let scene, camera, renderer, clock, courtGroup, ballMesh, ballShadow, targetMeshes = [], activeVenue = null;
 let homeTarget, awayTarget, ambient, sun, cameraTarget = new THREE.Vector3();
 const held = new Set();
 
@@ -231,6 +231,7 @@ function createBall() {
 }
 function init3D() {
   const venue = document.querySelector("#courtVenue")?.value || "accra";
+  activeVenue = venue;
   const venueStyle = {
     accra: { sky: "#c5a078", fog: "#c5a078", sun: "#fff0cf", ambient: "#f7dfb6" },
     jamestown: { sky: "#9fb8bd", fog: "#9fb8bd", sun: "#ffe1bc", ambient: "#d8e7e0" },
@@ -498,6 +499,12 @@ function animate() {
   if (renderer && scene && camera) renderer.render(scene, camera);
 }
 function startMatch() {
+  const selectedVenue = document.querySelector("#courtVenue")?.value || "accra";
+  if (scene && activeVenue !== selectedVenue) {
+    if (renderer) { renderer.setAnimationLoop(null); renderer.dispose(); }
+    scene = null; camera = null; renderer = null; clock = null;
+    courtGroup = null; ballMesh = null; ballShadow = null; targetMeshes = [];
+  }
   if (!scene) {
     try { init3D(); }
     catch (error) { console.error("SMALL POLES 3D failed to initialise:", error); ui.hint.textContent = THREE_CDN_NOTE + " Try refreshing the page."; return; }
