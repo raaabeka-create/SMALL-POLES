@@ -12,11 +12,28 @@ export function addNeighborhood(THREE, scene, venue = "accra") {
 
   const material = (color, roughness = 0.92, metalness = 0) =>
     new THREE.MeshStandardMaterial({ color, roughness, metalness });
+  const venuePalette = {
+    accra: {
+      plaster: ["#d5b68b", "#c8a17a", "#dfc69e", "#aeb39a", "#e2d4b8"],
+      roof: ["#7a4432", "#5a5146", "#8a5941", "#4a4b43"]
+    },
+    jamestown: {
+      plaster: ["#c7b18c", "#aeb9b4", "#dfc6a0", "#b6a18a", "#d9d0bd"],
+      roof: ["#55777a", "#5a5146", "#8a5941", "#53615d"]
+    },
+    kumasi: {
+      plaster: ["#c6ad77", "#c99b68", "#d7c08a", "#9eaa7b", "#e0cda4"],
+      roof: ["#874b32", "#5a5146", "#a25f32", "#4a4b43"]
+    }
+  }[venue] || {
+    plaster: ["#d5b68b", "#c8a17a", "#dfc69e", "#aeb39a", "#e2d4b8"],
+    roof: ["#7a4432", "#5a5146", "#8a5941", "#4a4b43"]
+  };
   const m = {
-    plaster: ["#d5b68b", "#c8a17a", "#dfc69e", "#aeb39a", "#e2d4b8"].map(c => material(c)),
+    plaster: venuePalette.plaster.map(c => material(c)),
     concrete: material("#8a8273"),
     darkConcrete: material("#5b554b"),
-    roof: ["#7a4432", "#5a5146", "#8a5941", "#4a4b43"].map(c => material(c)),
+    roof: venuePalette.roof.map(c => material(c)),
     rust: material("#874b36"),
     metal: material("#3d4038", .7, .25),
     window: material("#25352f", .5),
@@ -151,6 +168,18 @@ export function addNeighborhood(THREE, scene, venue = "accra") {
   }
   kiosk(-16.5, 7.0, Math.PI / 2);
   kiosk(16.8, -7.0, -Math.PI / 2);
+  if (venue === "kumasi") {
+    // Extra market-side stalls make the Kumasi court feel busier and denser.
+    kiosk(-23.0, -5.5, Math.PI / 2);
+    kiosk(23.0, 5.5, -Math.PI / 2);
+  }
+  if (venue === "jamestown") {
+    // Weathered blue-green fish crates and a coastal tarp beside the compounds.
+    for (let i = 0; i < 5; i++) {
+      box(root, [.7, .45, .55], i % 2 ? m.blue : m.green, [-23.0 + i * .78, .23, 10.5]);
+    }
+    box(root, [4.8, .08, 2.8], m.blue, [-21.4, 2.2, 10.5], [0, 0, -.08]);
+  }
 
   // Utility poles, cross arms and sagging overhead wires.
   const polePoints = [
