@@ -202,8 +202,8 @@ function createBall() {
 }
 function init3D() {
   scene = new THREE.Scene(); scene.background = new THREE.Color("#c5a078"); scene.fog = new THREE.Fog("#c5a078", 32, 68);
-  camera = new THREE.PerspectiveCamera(43, 1, .1, 100);
-  camera.position.set(0, 20, 29); camera.lookAt(0, 0, 0);
+  camera = new THREE.PerspectiveCamera(55, 1, .1, 120);
+  camera.position.set(0, 18, 31); camera.lookAt(0, 0, 0);
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
