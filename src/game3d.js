@@ -212,8 +212,8 @@ function createPlayer(team, index) {
     const nameTexture = makeTexture((ctx, w, h) => {
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "rgba(16, 20, 15, .88)";
-      ctx.beginPath(); ctx.roundRect(10, 14, w - 20, h - 28, 18); ctx.fill();
-      ctx.strokeStyle = "#f1cc3b"; ctx.lineWidth = 5; ctx.stroke();
+      ctx.fillRect(10, 14, w - 20, h - 28);
+      ctx.strokeStyle = "#f1cc3b"; ctx.lineWidth = 5; ctx.strokeRect(10, 14, w - 20, h - 28);
       ctx.fillStyle = "#fff9e8"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.font = "900 46px system-ui, sans-serif"; ctx.fillText(streetName, w / 2, h / 2 + 2, w - 42);
     }, 512, 128);
