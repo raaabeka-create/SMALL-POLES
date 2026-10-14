@@ -173,7 +173,7 @@ function createCourt() {
 }
 function createTarget(x, z, trimColor) {
   const g = new THREE.Group(); g.position.set(x, 1.05, z);
-  const dark = mat("#281b16"), red = mat("#e9473b"), trim = mat(trimColor);
+  const dark = mat("#281b16"), red = mat("#e9473b"), trim = new THREE.MeshStandardMaterial({ color: trimColor, emissive: trimColor, emissiveIntensity: .32, roughness: .42 });
   box(g, [2.1, 1.25, .14], dark, [0, 0, 0]);
   box(g, [1.8, .95, .12], red, [0, 0, .1]);
   box(g, [1.9, .07, .15], trim, [0, .51, .11]);
@@ -230,8 +230,38 @@ function createPlayer(team, index) {
     const shoe = new THREE.Mesh(new THREE.BoxGeometry(.19, .12, .32), boot); shoe.position.set(0, -.64, -.06); leg.add(shoe);
     legPivots.push(leg);
   }
-  // Team-colour shoulder stripe and a tiny number on the back.
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(.5, .075, .33), mat(team === "home" ? "#f1cc3b" : "#f4eee0"));
+  // Match-day kit details: sleeve piping, chest crest, shorts trim and boot accents.
+  const trimColor = team === "home" ? "#e9ff55" : "#f4eee0";
+  const trimMat = mat(trimColor, .55);
+  for (const side of [-1, 1]) {
+    const sleeveBand = new THREE.Mesh(new THREE.CylinderGeometry(.115, .12, .075, 8), trimMat);
+    sleeveBand.rotation.z = Math.PI / 2; sleeveBand.position.set(side * .39, 1.34, 0); root.add(sleeveBand);
+    const shortsStripe = new THREE.Mesh(new THREE.BoxGeometry(.045, .28, .19), trimMat);
+    shortsStripe.position.set(side * .245, .57, .015); root.add(shortsStripe);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(.055, 8, 7), skin);
+    ear.position.set(side * .215, 1.68, 0); root.add(ear);
+    const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(.027, 7, 6), mat("#fff4dc"));
+    eyeWhite.position.set(side * .075, 1.72, .185); root.add(eyeWhite);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(.013, 6, 5), mat("#191713"));
+    pupil.position.set(side * .075, 1.72, .208); root.add(pupil);
+    const sockBand = new THREE.Mesh(new THREE.BoxGeometry(.12, .045, .1), trimMat);
+    sockBand.position.set(side * .17, .38, .025); root.add(sockBand);
+    const bootSole = new THREE.Mesh(new THREE.BoxGeometry(.205, .035, .34), mat("#d8d0b9"));
+    bootSole.position.set(side * .17, .08, -.06); root.add(bootSole);
+    const lace = new THREE.Mesh(new THREE.BoxGeometry(.09, .018, .025), mat("#f1ead9"));
+    lace.position.set(side * .17, .12, -.02); root.add(lace);
+  }
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.095, .11, .14, 9), skin);
+  neck.position.y = 1.47; root.add(neck);
+  // Team crest and a vertical kit stripe make each player readable in motion.
+  const crestBacking = new THREE.Mesh(new THREE.CircleGeometry(.085, 6), mat(team === "home" ? "#152219" : "#4a211e"));
+  crestBacking.position.set(-.16, 1.22, .285); root.add(crestBacking);
+  const crestMark = new THREE.Mesh(new THREE.CircleGeometry(.052, 5), trimMat);
+  crestMark.position.set(-.16, 1.22, .294); root.add(crestMark);
+  const kitStripe = new THREE.Mesh(new THREE.BoxGeometry(.045, .42, .025), trimMat);
+  kitStripe.position.set(.12, 1.1, .292); root.add(kitStripe);
+  // Team-colour shoulder stripe across the back.
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(.5, .075, .33), trimMat);
   stripe.position.set(0, 1.25, .16); root.add(stripe);
   if (isUser) {
     const streetName = (document.querySelector("#playerName")?.value || "PLAYER").trim().slice(0, 14).toUpperCase() || "PLAYER";
@@ -529,10 +559,14 @@ function updateBall(dt) {
 }
 function updateCamera(dt) {
   const user = state.players.find(p => p.isUser);
-  const targetX = user ? user.root.position.x * .12 : 0;
-  cameraTarget.lerp(new THREE.Vector3(targetX, 0, 0), 1 - Math.exp(-dt * 1.4));
-  camera.position.x = THREE.MathUtils.damp(camera.position.x, cameraTarget.x, 1.25, dt);
-  camera.lookAt(cameraTarget.x * .35, .4, 0);
+  const ball = state.ball;
+  // A restrained broadcast-style follow keeps the play central without losing the court.
+  const targetX = THREE.MathUtils.clamp((ball?.x || 0) * .16 + (user ? user.root.position.x * .08 : 0), -2.8, 2.8);
+  const targetZ = THREE.MathUtils.clamp((ball?.z || 0) * .12, -2.2, 2.2);
+  cameraTarget.lerp(new THREE.Vector3(targetX, 0, targetZ), 1 - Math.exp(-dt * 1.25));
+  camera.position.x = THREE.MathUtils.damp(camera.position.x, cameraTarget.x, 1.1, dt);
+  camera.position.z = THREE.MathUtils.damp(camera.position.z, 31 + cameraTarget.z * .6, .8, dt);
+  camera.lookAt(cameraTarget.x * .35, .4, cameraTarget.z * .35);
 }
 function animate() {
   const dt = Math.min(clock ? clock.getDelta() : .016, .04);
