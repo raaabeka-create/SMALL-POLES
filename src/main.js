@@ -670,13 +670,14 @@ startButton.addEventListener("click", startMatch);
 pauseButton.addEventListener("click", togglePause);
 resumeButton.addEventListener("click", togglePause);
 restartButton.addEventListener("click", function () {
+  const wasRunning = state.phase === "playing";
   resetMatch(state.mode, state.duration);
   state.phase = "playing";
   pauseOverlay.hidden = true;
   resultOverlay.hidden = true;
   pauseButton.textContent = "Ⅱ Pause";
   state.lastFrame = 0;
-  requestAnimationFrame(gameLoop);
+  if (!wasRunning) requestAnimationFrame(gameLoop);
 });
 backButton.addEventListener("click", returnToMenu);
 playAgainButton.addEventListener("click", startMatch);
