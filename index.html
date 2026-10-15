@@ -1,77 +1,172 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0d10">
-  <meta name="description" content="SMALL POLES — an original, fast, 3v3 street-football game born in Ghana.">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>SMALL POLES — Street Football</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
-  <script type="module" src="./src/game3d.js"></script>
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <div class="noise" aria-hidden="true"></div>
-  <header class="site-header">
-    <a class="brand" href="./" aria-label="Small Poles home"><span class="brand-symbol">SP<span>●</span></span><span class="brand-name">SMALL<span>POLES</span></span></a>
-    <div class="header-center"><span class="status-dot"></span> GHANA STREET FOOTBALL <span class="header-sep">/</span> ONLINE-READY PROTOTYPE</div>
-    <div class="header-right"><span class="edition">STREET TOUR</span><span class="edition-num">01 — ACCRA</span></div>
-  </header>
+  <div id="app">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="screen active">
+      <div class="loading-content">
+        <div class="logo-mark">SP</div>
+        <h1 class="logo-text">SMALL POLES</h1>
+        <p class="tagline">Ghanaian Street Football</p>
+        <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+        <p class="loading-text" id="loading-text">Initializing...</p>
+      </div>
+    </div>
 
-  <main class="app">
-    <section id="introPanel" class="landing">
-      <div class="hero">
-        <div class="hero-copy">
-          <div class="eyebrow"><span class="eyebrow-line"></span> THE STREETS ARE THE STADIUM</div>
-          <h1>NO RULES.<br><em>JUST</em> <span>POLES.</span></h1>
-          <p class="hero-description">Small-sided football. Concrete courts. Neighbourhood pride. Build your rep one match at a time.</p>
-          <div class="hero-meta"><span><b>3V3</b> STREET MATCHES</span><span class="meta-divider"></span><span><b>01</b> PLAYER. YOUR STORY.</span></div>
+    <!-- Main Menu -->
+    <div id="main-menu" class="screen">
+      <div class="menu-bg"></div>
+      <div class="menu-content">
+        <div class="logo-block">
+          <div class="logo-mark large">SP</div>
+          <h1 class="logo-text">SMALL POLES</h1>
+          <p class="tagline">Street Football • Accra Style</p>
         </div>
-        <div class="hero-art" aria-label="Illustration of a street football court">
-          <div class="art-sun"></div><div class="art-grid"></div><div class="art-court"><div class="art-center-circle"></div><div class="art-midline"></div><div class="art-goal left"></div><div class="art-goal right"></div></div>
-          <div class="art-player player-one"><i></i><b></b></div><div class="art-player player-two"><i></i><b></b></div><div class="art-player player-three"><i></i><b></b></div><div class="art-ball"></div>
-          <div class="art-stamp">ACCRA<br><strong>GH</strong></div><div class="art-caption">OWN YOUR<br>BLOCK.</div>
+        <nav class="menu-nav">
+          <button class="menu-btn primary" data-action="quick-match">Quick Match</button>
+          <button class="menu-btn" data-action="street-tour">Street Tour</button>
+          <button class="menu-btn" data-action="training">Training Ground</button>
+          <button class="menu-btn" data-action="settings">Settings</button>
+        </nav>
+        <div class="menu-footer">
+          <span>3v3 • Local Play</span>
         </div>
       </div>
+    </div>
 
-      <div class="dashboard">
-        <section class="setup-panel">
-          <div class="section-heading"><div><span class="eyebrow">MATCHMAKING</span><h2>SET THE GAME</h2></div><span class="step-count">01 <i>/ 02</i></span></div>
-          <div class="setup-grid">
-            <label class="field field-wide"><span>PLAYER NAME</span><input id="playerName" maxlength="14" value="PLAYER" autocomplete="nickname" placeholder="Your street name"></label>
-            <label class="field"><span>COURT</span><select id="courtVenue"><option value="accra">Accra — The Compound</option><option value="jamestown">Jamestown — The Harbour</option><option value="kumasi">Kumasi — The Red Court</option></select></label>
-            <label class="field"><span>MATCH LENGTH</span><select id="matchDuration"><option value="90">90 seconds</option><option value="120" selected>2 minutes</option><option value="180">3 minutes</option><option value="300">5 minutes</option></select></label>
-            <label class="field"><span>YOUR KIT</span><select id="kitColor"><option value="#c9ff35">Voltage lime</option><option value="#28d7c4">Coastal teal</option><option value="#ff654f">Coral red</option><option value="#f1f0e8">Away white</option></select></label>
-            <label class="field"><span>SKIN TONE</span><select id="skinTone"><option value="#8d573a">Deep brown</option><option value="#b77952" selected>Warm brown</option><option value="#d69a70">Golden brown</option><option value="#edc09a">Light brown</option></select></label>
+    <!-- Venue / Team Select -->
+    <div id="select-screen" class="screen">
+      <div class="select-panel">
+        <h2>Select Venue</h2>
+        <div class="venue-grid" id="venue-grid"></div>
+        <h2>Your Team Colour</h2>
+        <div class="colour-row" id="team-colours"></div>
+        <div class="select-actions">
+          <button class="menu-btn secondary" data-action="back-menu">Back</button>
+          <button class="menu-btn primary" data-action="start-match">Kick Off</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game HUD -->
+    <div id="game-hud" class="hud hidden">
+      <div class="hud-top">
+        <div class="scoreboard">
+          <div class="team home">
+            <span class="team-name" id="home-name">HOME</span>
+            <span class="score" id="home-score">0</span>
           </div>
-          <button id="startMatch" class="start-button"><span class="start-index">01</span><span class="start-label">ENTER THE COURT<small>3V3 · STREET RULES · FIRST TO OUTPLAY</small></span><span class="start-arrow">↗</span></button>
-          <p class="microcopy"><span class="key-chip">W A S D</span> MOVE <span class="micro-dot">•</span> <span class="key-chip">J</span> SHOOT <span class="micro-dot">•</span> <span class="key-chip">K</span> PASS / TACKLE <span class="micro-dot">•</span> <span class="key-chip">SHIFT</span> SPRINT</p>
-        </section>
-
-        <aside class="career-panel">
-          <div class="career-top"><div><span class="eyebrow">YOUR STREET STORY</span><h2>PLAYER CARD</h2></div><div class="avatar-mark">SP</div></div>
-          <div class="career-player"><div class="player-badge"><span>★</span></div><div><strong id="careerPlayerName">ROOKIE</strong><span>FREE AGENT · ACCRA</span></div><span id="careerLevel" class="level-badge">LVL 01</span></div>
-          <div class="career-stats"><div><span>MATCHES</span><strong id="careerMatches">00</strong></div><div><span>WINS</span><strong id="careerWins">00</strong></div><div><span>GOALS</span><strong id="careerGoals">00</strong></div></div>
-          <div class="rep-row"><span>STREET REP</span><strong id="careerXP">000 XP</strong></div><div class="rep-track"><span id="careerProgressBar"></span></div><div id="careerProgressText" class="rep-caption">0 / 250 XP TO NEXT LEVEL</div>
-          <div class="career-note"><span class="note-star">✳</span><p><strong>THE BLOCK REMEMBERS.</strong><br>Every win earns rep. Every goal tells your story.</p></div>
-        </aside>
+          <div class="timer-block">
+            <span class="timer" id="match-timer">3:00</span>
+            <span class="period" id="match-period">1st</span>
+          </div>
+          <div class="team away">
+            <span class="score" id="away-score">0</span>
+            <span class="team-name" id="away-name">AWAY</span>
+          </div>
+        </div>
       </div>
-      <section class="how-section"><div class="section-heading"><div><span class="eyebrow">QUICK BRIEFING</span><h2>KNOW YOUR GAME</h2></div><span class="step-count">02 <i>/ 02</i></span></div><div class="brief-grid"><article><span class="brief-number">01</span><h3>MOVE WITH INTENT</h3><p>Control your player, sprint into space, and use the cage walls to keep the play alive.</p></article><article><span class="brief-number">02</span><h3>MAKE IT COUNT</h3><p>Shoot into the opponent’s net. Pass to your teammates. Win the ball back when the other side has it.</p></article><article><span class="brief-number">03</span><h3>OWN THE BLOCK</h3><p>Play quick 3v3 matches, choose your court, and build a persistent local street reputation.</p></article></div></section>
-    </section>
-
-    <section id="gameSection" class="game-section" hidden>
-      <div class="match-toolbar"><div><span class="eyebrow">LIVE FROM THE BLOCK</span><h2 id="matchTitle">SMALL POLES · 3V3</h2></div><div class="toolbar-actions"><button id="pauseMatch" class="toolbar-button">Ⅱ PAUSE</button><button id="restartMatch" class="toolbar-button">↻ RESTART</button><button id="backToMenu" class="toolbar-button exit-button">EXIT MATCH ↗</button></div></div>
-      <div class="broadcast-bar"><div class="team-lockup"><span class="team-mark home-mark">SP</span><div><strong id="homeTeamName">YOUR CREW</strong><small>HOME</small></div></div><div class="scoreboard"><strong id="homeScore">0</strong><span>:</span><strong id="awayScore">0</strong><div class="clock" id="matchClock">02:00</div></div><div class="team-lockup away-lockup"><div><strong>THE VISITORS</strong><small>AWAY</small></div><span class="team-mark away-mark">V</span></div></div>
-      <div id="pitchFrame" class="pitch-frame"><canvas id="gameCanvas" aria-label="Three-dimensional 3v3 street football match"></canvas><div class="arena-label"><span class="arena-live"><i></i> LIVE MATCH</span><span id="arenaVenue">ACCRA · THE COMPOUND</span></div>
-        <div id="pauseOverlay" class="game-overlay" hidden><div class="overlay-card"><span class="eyebrow">TAKE A BREATHER</span><h3>MATCH PAUSED</h3><p>Your court. Your pace.</p><button id="resumeMatch" class="start-button overlay-button"><span class="start-label">RESUME MATCH</span><span class="start-arrow">↗</span></button></div></div>
-        <div id="resultOverlay" class="game-overlay" hidden><div class="overlay-card result-card"><span class="eyebrow">FULL TIME</span><h3 id="resultHeadline">MATCH COMPLETE</h3><p id="resultSummary">The block saw that.</p><div id="resultScore" class="final-score">0 — 0</div><button id="playAgain" class="start-button overlay-button"><span class="start-label">RUN IT BACK</span><span class="start-arrow">↗</span></button><button id="resultMenu" class="text-button">BACK TO PLAYER HUB</button></div></div>
+      <div class="hud-bottom">
+        <div class="stamina-bar">
+          <div class="stamina-fill" id="stamina-fill"></div>
+        </div>
+        <div class="controls-hint" id="controls-hint">
+          <span>WASD Move</span>
+          <span>Shift Sprint</span>
+          <span>J Pass</span>
+          <span>K Shoot</span>
+          <span>L Tackle</span>
+        </div>
       </div>
-      <div class="game-footer"><p id="matchHint" role="status">Find space, move the ball, and attack the goal.</p><div class="match-tags"><span>3V3</span><span>NO REFEREE</span><span>ALL HEART</span></div></div>
-      <div class="mobile-controls"><div class="dpad"><button data-control="up" aria-label="Move forward">▲</button><div><button data-control="left" aria-label="Move left">◀</button><button data-control="down" aria-label="Move backward">▼</button><button data-control="right" aria-label="Move right">▶</button></div></div><div class="action-pad"><button data-control="sprint"><b>⚡</b><span>SPRINT</span></button><button data-control="pass"><b>K</b><span>PASS / TACKLE</span></button><button data-control="shoot"><b>J</b><span>SHOOT</span></button></div></div>
-    </section>
-  </main>
-  <footer class="site-footer"><span>SMALL POLES <b>×</b> MADE IN GHANA</span><span>ORIGINAL STREET FOOTBALL EXPERIENCE <i>·</i> BUILD 2.0</span></footer>
+      <div class="goal-banner hidden" id="goal-banner">
+        <span class="goal-text">GOAL!</span>
+        <span class="goal-scorer" id="goal-scorer"></span>
+      </div>
+      <div class="pause-overlay hidden" id="pause-overlay">
+        <div class="pause-panel">
+          <h2>Paused</h2>
+          <button class="menu-btn primary" data-action="resume">Resume</button>
+          <button class="menu-btn" data-action="restart">Restart Match</button>
+          <button class="menu-btn secondary" data-action="quit-menu">Quit to Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Result -->
+    <div id="result-screen" class="screen">
+      <div class="result-panel">
+        <h2 id="result-title">Full Time</h2>
+        <div class="final-score">
+          <span id="final-home">0</span>
+          <span class="sep">–</span>
+          <span id="final-away">0</span>
+        </div>
+        <div class="stats-grid" id="match-stats"></div>
+        <div class="result-actions">
+          <button class="menu-btn primary" data-action="rematch">Rematch</button>
+          <button class="menu-btn secondary" data-action="back-menu">Main Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tutorial Overlay -->
+    <div id="tutorial" class="screen">
+      <div class="tutorial-panel">
+        <h2>How to Play</h2>
+        <ul class="tutorial-list">
+          <li><kbd>W A S D</kbd> or Arrows — Move</li>
+          <li><kbd>Shift</kbd> — Sprint (uses stamina)</li>
+          <li><kbd>J</kbd> — Pass to nearest teammate</li>
+          <li><kbd>K</kbd> — Shoot (hold for power)</li>
+          <li><kbd>L</kbd> — Tackle / Challenge</li>
+          <li><kbd>Esc</kbd> — Pause</li>
+        </ul>
+        <p class="tutorial-note">On mobile: use the virtual joystick + action buttons.</p>
+        <button class="menu-btn primary" data-action="skip-tutorial">Got it — Play</button>
+      </div>
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="mobile-controls" class="hidden">
+      <div id="joystick-zone">
+        <div id="joystick-base">
+          <div id="joystick-knob"></div>
+        </div>
+      </div>
+      <div id="action-buttons">
+        <button id="btn-pass" class="action-btn">Pass</button>
+        <button id="btn-shoot" class="action-btn">Shoot</button>
+        <button id="btn-tackle" class="action-btn">Tackle</button>
+        <button id="btn-sprint" class="action-btn sprint">Sprint</button>
+      </div>
+    </div>
+
+    <!-- Canvas Container -->
+    <div id="game-container">
+      <canvas id="game-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Three.js + modules -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
