@@ -405,8 +405,11 @@ function shoot(player) {
   // Bias a shot toward the opponent's goal while preserving directional aim.
   dz = player.team === "home" ? Math.min(-.32, dz - .28) : Math.max(.32, dz + .28);
   const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
+  const targetZ = player.team === "home" ? -FIELD.halfL : FIELD.halfL;
+  const flightTime = THREE.MathUtils.clamp(Math.abs((targetZ - b.z) / (Math.abs(dz) < .08 ? -.08 : dz)) / 13.5, .35, 1.45);
+  const launchY = THREE.MathUtils.clamp((1.05 - b.y + 4.9 * flightTime * flightTime) / flightTime, 2.8, 8.5);
   state.carrier = null; b.vx = dx * 13.5 + player.vx * .25; b.vz = dz * 13.5 + player.vz * .25;
-  b.vy = 2.5 + Math.min(2.5, Math.abs(input.x) * .8); b.spin = dx * .25; b.lastTeam = player.team;
+  b.vy = launchY; b.spin = dx * .25; b.lastTeam = player.team;
   state.lastShot = state.elapsed; player.root.rotation.y = Math.atan2(dx, dz); playSound("kick");
   setHint(player.team === "home" ? "SHOT AWAY! Follow the rebound." : "The visitors have fired a shot.");
 }
@@ -495,8 +498,10 @@ function updateAI(player, dt) {
 }
 function aiShoot(player) {
   const b = state.ball, targetZ = player.team === "home" ? -FIELD.halfL : FIELD.halfL;
-  const dx = -b.x * .15 - b.x, dz = targetZ - b.z, len = Math.hypot(dx, dz) || 1;
-  state.carrier = null; b.vx = dx / len * 12.5; b.vz = dz / len * 12.5; b.vy = 2.3; b.lastTeam = player.team;
+  const dx = -b.x * .15 - b.x, dz = targetZ - b.z, distance = Math.hypot(dx, dz), len = distance || 1;
+  const flightTime = THREE.MathUtils.clamp(distance / 12.5, .35, 1.45);
+  const launchY = THREE.MathUtils.clamp((1.05 - b.y + 4.9 * flightTime * flightTime) / flightTime, 2.8, 8.5);
+  state.carrier = null; b.vx = dx / len * 12.5; b.vz = dz / len * 12.5; b.vy = launchY; b.lastTeam = player.team;
   playSound("kick");
 }
 function aiPass(player) {
