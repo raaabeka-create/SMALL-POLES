@@ -206,6 +206,8 @@ function createPlayer(team, index) {
   const kitColor = home ? state.kit : TEAM.away;
   const skinColor = home && index === 0 ? state.skin : SKINS[(index + (home ? 1 : 2)) % SKINS.length];
   const kit = mat(kitColor, .52), shorts = mat(home ? "#20281c" : "#262426", .78), skin = mat(skinColor, .76), boot = mat("#151719", .42, .08);
+  if (home) kit.userData.homeKit = true;
+  if (home) skin.userData.homeSkin = true;
   const sock = mat(home ? "#e5e8d7" : "#ece2d4", .7);
   const body = new THREE.Group(); root.add(body);
   const torso = new THREE.Mesh(new THREE.CapsuleGeometry(.34, .47, 4, 8), kit);
@@ -237,7 +239,9 @@ function createPlayer(team, index) {
   }
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(.52, 20), new THREE.MeshBasicMaterial({ color: "#161a15", transparent: true, opacity: .28, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = .025; root.add(shadow);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(.53, .025, 5, 36), new THREE.MeshBasicMaterial({ color: home ? state.kit : TEAM.away, transparent: true, opacity: home && index === 0 ? .95 : .28 }));
+  const ringMaterial = new THREE.MeshBasicMaterial({ color: home ? state.kit : TEAM.away, transparent: true, opacity: home && index === 0 ? .95 : .28 });
+  if (home) ringMaterial.userData.homeKit = true;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.53, .025, 5, 36), ringMaterial);
   ring.rotation.x = Math.PI / 2; ring.position.y = .04; root.add(ring);
   const numberCanvas = document.createElement("canvas"); numberCanvas.width = 128; numberCanvas.height = 128;
   const ctx = numberCanvas.getContext("2d"); ctx.clearRect(0, 0, 128, 128);
@@ -312,19 +316,25 @@ function startMatch() {
   state.kit = ui.kitColor.value || "#c9ff35"; state.skin = ui.skinTone.value || "#b77952";
   state.venue = ui.courtVenue.value || "accra"; state.duration = Number(ui.matchDuration.value) || 120;
   if (state.sceneBuilt && state.venue !== state.builtVenue) {
-    if (state.renderer) { state.renderer.dispose(); state.renderer = null; }
-    state.sceneBuilt = false; scene = camera = clock = courtGroup = playerGroup = ballMesh = ballShadow = ballRing = null;
+    // Rebuild the scene graph for the selected court while keeping the canvas renderer alive.
+    state.sceneBuilt = false;
+    scene = camera = clock = courtGroup = playerGroup = ballMesh = ballShadow = ballRing = null;
   }
   if (!state.sceneBuilt) {
     try { buildScene(); state.builtVenue = state.venue; }
     catch (error) { console.error("SMALL POLES scene failed:", error); setHint("3D could not start. Refresh the page and make sure WebGL is available."); return; }
   } else {
-    // Update the player kit when a new run starts without rebuilding the venue.
+    // Keep the player model but apply the selected kit and skin to all marked materials.
     state.players.forEach(p => {
-      if (p.team === "home") {
-        p.body.traverse(obj => { if (obj.isMesh && obj.material?.color && obj.material.color.getHexString() === "c9ff35") obj.material.color.set(state.kit); });
-      }
+      if (p.team !== "home") return;
+      p.body.traverse(obj => {
+        if (!obj.isMesh || !obj.material?.userData) return;
+        if (obj.material.userData.homeKit) obj.material.color.set(state.kit);
+        if (obj.material.userData.homeSkin) obj.material.color.set(state.skin);
+      });
+      p.ring.material.color.set(state.kit);
     });
+    ballRing.material.color.set(state.kit);
   }
   state.remaining = state.duration; state.homeScore = 0; state.awayScore = 0; state.elapsed = 0;
   state.lastShot = -10; state.lastPass = -10; state.lastTackle = -10; state.aiCooldown = 0;
@@ -536,8 +546,8 @@ function updateBall(dt) {
       b.x = THREE.MathUtils.clamp(b.x, -FIELD.halfW + .35, FIELD.halfW - .35); b.vx *= -.72; b.vz += (Math.random() - .5) * .8;
     }
     // Goal detection: the ball must cross the end line inside the net aperture.
-    if (b.z < -FIELD.halfL + .15 && Math.abs(b.x) < FIELD.goalW - .12 && b.y < FIELD.goalH) { if (b.lastTeam === "home") scoreGoal("home"); else scoreGoal("away"); return; }
-    if (b.z > FIELD.halfL - .15 && Math.abs(b.x) < FIELD.goalW - .12 && b.y < FIELD.goalH) { if (b.lastTeam === "away") scoreGoal("away"); else scoreGoal("home"); return; }
+    if (b.z < -FIELD.halfL + .15 && Math.abs(b.x) < FIELD.goalW - .12 && b.y < FIELD.goalH) { scoreGoal("home"); return; }
+    if (b.z > FIELD.halfL - .15 && Math.abs(b.x) < FIELD.goalW - .12 && b.y < FIELD.goalH) { scoreGoal("away"); return; }
     if (b.z < -FIELD.halfL + .4) { b.z = -FIELD.halfL + .4; b.vz = Math.abs(b.vz) * .76; }
     if (b.z > FIELD.halfL - .4) { b.z = FIELD.halfL - .4; b.vz = -Math.abs(b.vz) * .76; }
     const speed = Math.hypot(b.vx, b.vz);
@@ -616,7 +626,13 @@ document.addEventListener("keydown", event => {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(code)) event.preventDefault();
   if (code === "Escape") { togglePause(); return; }
   if (state.phase !== "playing") return;
-  if (["KeyJ", "KeyK"].includes(code) && !event.repeat) { if (code === "KeyJ") handleAction("shoot"); else handleAction("pass"); return; }
+  if (code === "KeyJ" && !event.repeat) { handleAction("shoot"); return; }
+  if (code === "KeyK") {
+    const user = state.players.find(p => p.team === "home" && p.index === 0);
+    if (state.carrier === user) { if (!event.repeat) handleAction("pass"); }
+    else state.keys.add("KeyK");
+    return;
+  }
   state.keys.add(code);
 });
 document.addEventListener("keyup", event => state.keys.delete(event.code));
@@ -625,8 +641,12 @@ document.querySelectorAll("[data-control]").forEach(button => {
   const control = button.dataset.control;
   const down = event => {
     event.preventDefault(); if (state.phase !== "playing") return;
-    if (control === "shoot" || control === "pass") handleAction(control);
-    else state.touch.add(control);
+    if (control === "shoot") handleAction(control);
+    else if (control === "pass") {
+      const user = state.players.find(p => p.team === "home" && p.index === 0);
+      if (state.carrier === user) handleAction("pass");
+      else state.touch.add("pass");
+    } else state.touch.add(control);
     button.classList.add("is-active");
     if (button.setPointerCapture && event.pointerId !== undefined) { try { button.setPointerCapture(event.pointerId); } catch {} }
   };
