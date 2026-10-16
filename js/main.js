@@ -5,12 +5,14 @@ import { SceneManager } from './engine/SceneManager.js';
 import { MatchManager } from './systems/MatchManager.js';
 import { InputManager } from './utils/input.js';
 import { UIManager } from './ui/UIManager.js';
+import { AudioManager } from './audio/AudioManager.js';
 
 class Game {
   constructor() {
     this.canvas = document.getElementById('game-canvas');
     this.ui = new UIManager();
     this.input = new InputManager();
+    this.audio = new AudioManager();
     this.scene = null;
     this.match = null;
     this.lastTime = 0;
@@ -19,23 +21,32 @@ class Game {
   }
 
   async init() {
+    const unlock = () => {
+      this.audio.unlock();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
+
     this.ui.setLoadingProgress(0.1, 'Loading engine...');
-    await this._delay(200);
-    this.scene = new SceneManager(this.canvas);
-    this.ui.setLoadingProgress(0.5, 'Building scene...');
     await this._delay(150);
-    this.match = new MatchManager(this.scene, this.input);
+    this.scene = new SceneManager(this.canvas);
+    this.ui.setLoadingProgress(0.45, 'Building street pitch...');
+    await this._delay(120);
+    this.match = new MatchManager(this.scene, this.input, this.audio);
     this._wireCallbacks();
-    this.ui.setLoadingProgress(0.85, 'Almost ready...');
-    await this._delay(200);
+    this.ui.setLoadingProgress(0.8, 'Almost ready...');
+    await this._delay(150);
     this.ui.setLoadingProgress(1, 'Ready!');
-    await this._delay(300);
+    await this._delay(250);
 
     const seen = localStorage.getItem('sp_tutorial');
     if (!seen) {
       this.ui.showScreen('tutorial');
       this.ui.on('skip-tutorial', () => {
         localStorage.setItem('sp_tutorial', '1');
+        this.audio.uiClick();
         this.ui.showScreen('menu');
         this.state = 'menu';
       });
@@ -47,18 +58,27 @@ class Game {
   }
 
   _wireCallbacks() {
-    this.ui.on('quick-match', () => { this.ui.showScreen('select'); this.state = 'select'; });
-    this.ui.on('street-tour', () => { this.ui.showScreen('select'); this.state = 'select'; });
-    this.ui.on('training', () => { this.ui.showScreen('select'); this.state = 'select'; });
+    const goSelect = () => {
+      this.audio.uiClick();
+      this.ui.showScreen('select');
+      this.state = 'select';
+    };
+    this.ui.on('quick-match', goSelect);
+    this.ui.on('street-tour', goSelect);
+    this.ui.on('training', goSelect);
     this.ui.on('settings', () => {
-      alert('Controls:\nWASD Move | Shift Sprint\nJ/E Pass | K/Space Shoot | L/F Tackle | Esc Pause');
+      this.audio.uiClick();
+      this.audio.setEnabled(!this.audio.enabled);
+      alert('Audio: ' + (this.audio.enabled ? 'ON' : 'MUTED') + '\n\nWASD Move | Shift Sprint\nJ/E Pass | K/Space Shoot | L/F Tackle | Esc Pause\n\nTap Settings again to toggle mute.');
     });
     this.ui.on('back-menu', () => {
+      this.audio.uiClick();
+      this.audio.stopCrowd();
       this.ui.showScreen('menu');
       this.state = 'menu';
       this.match.running = false;
     });
-    this.ui.on('start-match', () => this._startMatch());
+    this.ui.on('start-match', () => { this.audio.uiClick(); this._startMatch(); });
     this.ui.on('resume', () => {
       this.match.paused = false;
       this.ui.showPause(false);
@@ -75,6 +95,7 @@ class Game {
     this.ui.on('quit-menu', () => {
       this.match.running = false;
       this.match.paused = false;
+      this.audio.stopCrowd();
       this.ui.showPause(false);
       this.ui.hideHUD();
       this.ui.showScreen('menu');
@@ -83,14 +104,19 @@ class Game {
     this.ui.on('rematch', () => this._startMatch());
 
     this.match.onGoal = (team) => {
+      this.audio.goal();
       this.ui.showGoal(team);
       this.ui.updateScore(this.match.homeScore, this.match.awayScore);
     };
     this.match.onScoreUpdate = (h, a) => this.ui.updateScore(h, a);
     this.match.onMatchEnd = (h, a, stats) => {
+      this.audio.whistle();
+      this.audio.stopCrowd();
       this.state = 'result';
       this.ui.showResult(h, a, stats);
     };
+    this.match.onKick = (power) => this.audio.kick(power);
+    this.match.onPass = () => this.audio.pass();
   }
 
   _startMatch() {
@@ -99,6 +125,9 @@ class Game {
     this.ui.showHUD();
     this.ui.updateScore(0, 0);
     this.ui.showPause(false);
+    this.ui.setPossession('YOU HAVE THE BALL');
+    this.audio.whistle();
+    this.audio.startCrowd();
     this.state = 'playing';
   }
 
@@ -117,6 +146,8 @@ class Game {
       this.match.update(dt);
       this.ui.updateTimer(this.match.getTimeString());
       this.ui.updateStamina(this.match.getHumanStamina());
+      this.ui.updatePower(this.match.getShootCharge());
+      this.ui.setPossession(this.match.getPossessionText());
     } else if (this.state === 'paused') {
       if (this.input.consumePause()) {
         this.match.paused = false;
@@ -124,17 +155,17 @@ class Game {
         this.state = 'playing';
       }
     }
-
     if (this.scene) this.scene.render();
   }
 
   _delay(ms) {
-    return new Promise(r => setTimeout(r, ms));
+    return new Promise((r) => setTimeout(r, ms));
   }
 }
 
 const game = new Game();
-game.init().catch(err => {
+game.init().catch((err) => {
   console.error('Failed to start SMALL POLES:', err);
-  document.getElementById('loading-text').textContent = 'Error loading game. Check console.';
+  const el = document.getElementById('loading-text');
+  if (el) el.textContent = 'Error loading game. Check console.';
 });
