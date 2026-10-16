@@ -1,6 +1,5 @@
 /**
  * SMALL POLES — Entry point
- * Modular 3v3 street-football prototype
  */
 import { SceneManager } from './engine/SceneManager.js';
 import { MatchManager } from './systems/MatchManager.js';
@@ -22,16 +21,13 @@ class Game {
   async init() {
     this.ui.setLoadingProgress(0.1, 'Loading engine...');
     await this._delay(200);
-
     this.scene = new SceneManager(this.canvas);
     this.ui.setLoadingProgress(0.5, 'Building scene...');
     await this._delay(150);
-
     this.match = new MatchManager(this.scene, this.input);
     this._wireCallbacks();
     this.ui.setLoadingProgress(0.85, 'Almost ready...');
     await this._delay(200);
-
     this.ui.setLoadingProgress(1, 'Ready!');
     await this._delay(300);
 
@@ -47,23 +43,13 @@ class Game {
       this.ui.showScreen('menu');
       this.state = 'menu';
     }
-
     this._loop(0);
   }
 
   _wireCallbacks() {
-    this.ui.on('quick-match', () => {
-      this.ui.showScreen('select');
-      this.state = 'select';
-    });
-    this.ui.on('street-tour', () => {
-      this.ui.showScreen('select');
-      this.state = 'select';
-    });
-    this.ui.on('training', () => {
-      this.ui.showScreen('select');
-      this.state = 'select';
-    });
+    this.ui.on('quick-match', () => { this.ui.showScreen('select'); this.state = 'select'; });
+    this.ui.on('street-tour', () => { this.ui.showScreen('select'); this.state = 'select'; });
+    this.ui.on('training', () => { this.ui.showScreen('select'); this.state = 'select'; });
     this.ui.on('settings', () => {
       alert('Settings: Audio & controls coming in next build.\nControls are listed in the tutorial.');
     });
@@ -85,6 +71,9 @@ class Game {
         this.ui.showPause(true);
         this.state = 'paused';
       }
+    });
+    this.ui.on('cam-cycle', () => {
+      if (this.scene) this.scene.cycleCamera();
     });
     this.ui.on('quit-menu', () => {
       this.match.running = false;
@@ -120,7 +109,6 @@ class Game {
     this.raf = requestAnimationFrame((t) => this._loop(t));
     const dt = Math.min(0.05, (time - this.lastTime) / 1000) || 0.016;
     this.lastTime = time;
-
     this.input.update(dt);
 
     if (this.state === 'playing') {
@@ -128,6 +116,9 @@ class Game {
         this.match.togglePause();
         this.ui.showPause(this.match.paused);
         this.state = this.match.paused ? 'paused' : 'playing';
+      }
+      if (this.input.consumeCam()) {
+        this.scene.cycleCamera();
       }
       this.match.update(dt);
       this.ui.updateTimer(this.match.getTimeString());
