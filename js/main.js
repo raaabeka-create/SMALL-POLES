@@ -51,7 +51,7 @@ class Game {
     this.ui.on('street-tour', () => { this.ui.showScreen('select'); this.state = 'select'; });
     this.ui.on('training', () => { this.ui.showScreen('select'); this.state = 'select'; });
     this.ui.on('settings', () => {
-      alert('Settings: Audio & controls coming in next build.\nControls are listed in the tutorial.');
+      alert('Controls:\nWASD Move | Shift Sprint\nJ/E Pass | K/Space Shoot | L/F Tackle | Esc Pause');
     });
     this.ui.on('back-menu', () => {
       this.ui.showScreen('menu');
@@ -71,9 +71,6 @@ class Game {
         this.ui.showPause(true);
         this.state = 'paused';
       }
-    });
-    this.ui.on('cam-cycle', () => {
-      if (this.scene) this.scene.cycleCamera();
     });
     this.ui.on('quit-menu', () => {
       this.match.running = false;
@@ -116,9 +113,6 @@ class Game {
         this.match.togglePause();
         this.ui.showPause(this.match.paused);
         this.state = this.match.paused ? 'paused' : 'playing';
-      }
-      if (this.input.consumeCam()) {
-        this.scene.cycleCamera();
       }
       this.match.update(dt);
       this.ui.updateTimer(this.match.getTimeString());
