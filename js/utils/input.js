@@ -1,5 +1,6 @@
 /**
- * Unified input system — keyboard + virtual joystick / action buttons
+ * Unified input — keyboard + virtual joystick / action buttons
+ * Controls: WASD move, Shift sprint, J/E pass, K/Space shoot, L/F tackle, Esc pause
  */
 export class InputManager {
   constructor() {
@@ -12,15 +13,14 @@ export class InputManager {
     this.tackle = false;
     this.shootHeld = 0;
     this.pausePressed = false;
-    this.camPressed = false;
 
     this.joyActive = false;
     this.joyX = 0;
     this.joyZ = 0;
     this._mobile = { pass: false, shoot: false, tackle: false, sprint: false };
 
-    this._prevJ = false;
-    this._prevL = false;
+    this._prevPass = false;
+    this._prevTackle = false;
 
     this._bindKeyboard();
     this._bindMobile();
@@ -30,7 +30,6 @@ export class InputManager {
     window.addEventListener('keydown', (e) => {
       this.keys[e.code] = true;
       if (e.code === 'Escape') this.pausePressed = true;
-      if (e.code === 'KeyC') this.camPressed = true;
       if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) {
         e.preventDefault();
       }
@@ -128,27 +127,23 @@ export class InputManager {
       this.moveZ = kz / len;
     }
 
-    const shift = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
-    this.sprint = shift || this._mobile.sprint;
+    this.sprint = !!(this.keys['ShiftLeft'] || this.keys['ShiftRight'] || this._mobile.sprint);
 
-    const jDown = !!this.keys['KeyJ'];
-    const kDown = !!this.keys['KeyK'];
-    const lDown = !!this.keys['KeyL'];
+    const passDown = !!(this.keys['KeyJ'] || this.keys['KeyE']);
+    const shootDown = !!(this.keys['KeyK'] || this.keys['Space']);
+    const tackleDown = !!(this.keys['KeyL'] || this.keys['KeyF']);
 
-    if ((jDown && !this._prevJ) || this._mobile.pass) this.pass = true;
-    if ((lDown && !this._prevL) || this._mobile.tackle) this.tackle = true;
-    this._prevJ = jDown;
-    this._prevL = lDown;
+    if ((passDown && !this._prevPass) || this._mobile.pass) this.pass = true;
+    if ((tackleDown && !this._prevTackle) || this._mobile.tackle) this.tackle = true;
+    this._prevPass = passDown;
+    this._prevTackle = tackleDown;
 
     this._mobile.pass = false;
     this._mobile.tackle = false;
 
-    this.shoot = kDown || this._mobile.shoot;
-    if (this.shoot) {
-      this.shootHeld = Math.min(1.5, this.shootHeld + dt);
-    } else {
-      this.shootHeld = 0;
-    }
+    this.shoot = shootDown || this._mobile.shoot;
+    if (this.shoot) this.shootHeld = Math.min(1.5, this.shootHeld + dt);
+    else this.shootHeld = 0;
   }
 
   consume(action) {
@@ -160,12 +155,6 @@ export class InputManager {
   consumePause() {
     const v = this.pausePressed;
     this.pausePressed = false;
-    return v;
-  }
-
-  consumeCam() {
-    const v = this.camPressed;
-    this.camPressed = false;
     return v;
   }
 
