@@ -72,7 +72,7 @@ export class MatchManager {
 
     for (const p of homePositions) {
       this.players.push(new Player(this.scene.scene, {
-        team: 0, isHuman: p.human, number: p.num,
+        team: 0, isHuman: !!p.human, number: p.num,
         colour: homeCol, x: p.x, z: p.z, facing: Math.PI,
       }));
     }
@@ -86,15 +86,17 @@ export class MatchManager {
 
   _kickoff() {
     this.ball.reset(0, 0);
-    const homeSpots = [{ x: 0, z: 5 }, { x: -4, z: 8 }, { x: 4, z: 8 }];
+    const homeSpots = [{ x: 0, z: 4.5 }, { x: -4, z: 8 }, { x: 4, z: 8 }];
     const awaySpots = [{ x: 0, z: -5 }, { x: -4, z: -8 }, { x: 4, z: -8 }];
     let hi = 0, ai = 0;
+    let human = null;
     for (const p of this.players) {
       if (p.team === 0) {
         p.position.set(homeSpots[hi].x, 0, homeSpots[hi].z);
         p.facing = Math.PI;
         p.velocity.set(0, 0, 0);
         p.hasBall = false;
+        if (p.isHuman) human = p;
         hi++;
       } else {
         p.position.set(awaySpots[ai].x, 0, awaySpots[ai].z);
@@ -103,6 +105,10 @@ export class MatchManager {
         p.hasBall = false;
         ai++;
       }
+    }
+    if (human) {
+      this.ball.setOwner(human);
+      human.hasBall = true;
     }
   }
 
@@ -128,7 +134,7 @@ export class MatchManager {
       p.update(dt, this.input, this.ball, this.pitch, teammates, opponents);
     }
 
-    this.ball.update(dt, this.pitch);
+    this.ball.update(dt, this.pitch, this.players);
 
     if (this.goalLock <= 0) {
       const scorer = this.pitch.checkGoal(this.ball);
