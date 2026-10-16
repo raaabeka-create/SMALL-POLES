@@ -13,7 +13,6 @@
 </head>
 <body>
   <div id="app">
-    <!-- Loading Screen -->
     <div id="loading-screen" class="screen active">
       <div class="loading-content">
         <div class="logo-mark">SP</div>
@@ -24,7 +23,6 @@
       </div>
     </div>
 
-    <!-- Main Menu -->
     <div id="main-menu" class="screen">
       <div class="menu-bg"></div>
       <div class="menu-content">
@@ -45,7 +43,6 @@
       </div>
     </div>
 
-    <!-- Venue / Team Select -->
     <div id="select-screen" class="screen">
       <div class="select-panel">
         <h2>Select Venue</h2>
@@ -59,7 +56,6 @@
       </div>
     </div>
 
-    <!-- Game HUD -->
     <div id="game-hud" class="hud hidden">
       <div class="hud-top">
         <div class="scoreboard">
@@ -88,6 +84,10 @@
           <span>K Shoot</span>
           <span>L Tackle</span>
         </div>
+        <div class="hud-actions">
+          <button class="hud-btn" data-action="restart" type="button">↻ Restart</button>
+          <button class="hud-btn" data-action="pause-match" type="button">⏸ Pause</button>
+        </div>
       </div>
       <div class="goal-banner hidden" id="goal-banner">
         <span class="goal-text">GOAL!</span>
@@ -103,7 +103,6 @@
       </div>
     </div>
 
-    <!-- Match Result -->
     <div id="result-screen" class="screen">
       <div class="result-panel">
         <h2 id="result-title">Full Time</h2>
@@ -120,7 +119,6 @@
       </div>
     </div>
 
-    <!-- Tutorial Overlay -->
     <div id="tutorial" class="screen">
       <div class="tutorial-panel">
         <h2>How to Play</h2>
@@ -137,7 +135,6 @@
       </div>
     </div>
 
-    <!-- Mobile Controls -->
     <div id="mobile-controls" class="hidden">
       <div id="joystick-zone">
         <div id="joystick-base">
@@ -152,13 +149,11 @@
       </div>
     </div>
 
-    <!-- Canvas Container -->
     <div id="game-container">
       <canvas id="game-canvas"></canvas>
     </div>
   </div>
 
-  <!-- Three.js + modules -->
   <script type="importmap">
   {
     "imports": {
