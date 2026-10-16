@@ -12,6 +12,7 @@ export class InputManager {
     this.tackle = false;
     this.shootHeld = 0;
     this.pausePressed = false;
+    this.camPressed = false;
 
     this.joyActive = false;
     this.joyX = 0;
@@ -29,6 +30,7 @@ export class InputManager {
     window.addEventListener('keydown', (e) => {
       this.keys[e.code] = true;
       if (e.code === 'Escape') this.pausePressed = true;
+      if (e.code === 'KeyC') this.camPressed = true;
       if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) {
         e.preventDefault();
       }
@@ -158,6 +160,12 @@ export class InputManager {
   consumePause() {
     const v = this.pausePressed;
     this.pausePressed = false;
+    return v;
+  }
+
+  consumeCam() {
+    const v = this.camPressed;
+    this.camPressed = false;
     return v;
   }
 
