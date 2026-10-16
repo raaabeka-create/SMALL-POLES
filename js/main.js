@@ -79,6 +79,13 @@ class Game {
       this.state = 'playing';
     });
     this.ui.on('restart', () => this._startMatch());
+    this.ui.on('pause-match', () => {
+      if (this.state === 'playing') {
+        this.match.togglePause();
+        this.ui.showPause(true);
+        this.state = 'paused';
+      }
+    });
     this.ui.on('quit-menu', () => {
       this.match.running = false;
       this.match.paused = false;
