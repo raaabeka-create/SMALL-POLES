@@ -37,9 +37,7 @@
           <button class="menu-btn" data-action="training">Training Ground</button>
           <button class="menu-btn" data-action="settings">Settings</button>
         </nav>
-        <div class="menu-footer">
-          <span>3v3 • Local Play</span>
-        </div>
+        <div class="menu-footer"><span>3v3 • Local Play</span></div>
       </div>
     </div>
 
@@ -74,16 +72,12 @@
         </div>
       </div>
       <div class="hud-bottom">
-        <div class="stamina-bar">
-          <div class="stamina-fill" id="stamina-fill"></div>
-        </div>
+        <div class="stamina-bar"><div class="stamina-fill" id="stamina-fill"></div></div>
+        <div class="power-bar hidden" id="power-bar"><div class="power-fill" id="power-fill"></div></div>
+        <div class="possession-hint" id="possession-hint"></div>
         <div class="controls-hint" id="controls-hint">
-          <span>WASD Move</span>
-          <span>Shift Sprint</span>
-          <span>J/E Pass</span>
-          <span>K/Space Shoot</span>
-          <span>L/F Tackle</span>
-          <span>Esc Pause</span>
+          <span>WASD Move</span><span>Shift Sprint</span><span>J/E Pass</span>
+          <span>K/Space Shoot</span><span>L/F Tackle</span><span>Esc Pause</span>
         </div>
         <div class="hud-actions">
           <button class="hud-btn" data-action="restart" type="button">↻ Restart</button>
@@ -108,9 +102,7 @@
       <div class="result-panel">
         <h2 id="result-title">Full Time</h2>
         <div class="final-score">
-          <span id="final-home">0</span>
-          <span class="sep">–</span>
-          <span id="final-away">0</span>
+          <span id="final-home">0</span><span class="sep">–</span><span id="final-away">0</span>
         </div>
         <div class="stats-grid" id="match-stats"></div>
         <div class="result-actions">
@@ -138,9 +130,7 @@
 
     <div id="mobile-controls" class="hidden">
       <div id="joystick-zone">
-        <div id="joystick-base">
-          <div id="joystick-knob"></div>
-        </div>
+        <div id="joystick-base"><div id="joystick-knob"></div></div>
       </div>
       <div id="action-buttons">
         <button id="btn-pass" class="action-btn">Pass</button>
@@ -150,9 +140,7 @@
       </div>
     </div>
 
-    <div id="game-container">
-      <canvas id="game-canvas"></canvas>
-    </div>
+    <div id="game-container"><canvas id="game-canvas"></canvas></div>
   </div>
 
   <script type="importmap">
