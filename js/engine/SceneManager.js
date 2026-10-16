@@ -20,22 +20,17 @@ export class SceneManager {
     this.scene.background = new THREE.Color(0x87a0b8);
     this.scene.fog = new THREE.FogExp2(0x87a0b8, 0.018);
 
-    this.camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 200);
-    this.camera.position.set(0, 9, 14);
-    this.camera.lookAt(0, 0.5, 0);
+    this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
+    this.camera.position.set(16, 5, 0);
+    this.camera.lookAt(0, 0.8, 0);
 
-    this.camMode = 0;
-    this._lookTarget = new THREE.Vector3(0, 0.5, 0);
-    this._camIdeal = new THREE.Vector3(0, 9, 14);
+    this._lookTarget = new THREE.Vector3(0, 0.8, 0);
+    this._camIdeal = new THREE.Vector3(16, 5, 0);
 
     this._setupLights();
     this.pitch = null;
 
     window.addEventListener('resize', () => this._onResize());
-  }
-
-  cycleCamera() {
-    this.camMode = (this.camMode + 1) % 3;
   }
 
   _setupLights() {
@@ -83,6 +78,7 @@ export class SceneManager {
     return this.pitch;
   }
 
+  /** Fixed sideline camera — tracks play along the touchline */
   updateCamera(ball, players, dt) {
     if (!ball) return;
 
@@ -90,33 +86,15 @@ export class SceneManager {
     const bz = ball.position.z;
     const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
 
-    let idealX, idealY, idealZ, lookY;
-    if (this.camMode === 1) {
-      idealX = bx * 0.25;
-      idealY = 16 + Math.abs(bz) * 0.06;
-      idealZ = bz * 0.35 + 20;
-      lookY = 0.4;
-      this.camera.fov = 50;
-    } else if (this.camMode === 2) {
-      idealX = Math.sign(bx || 1) * 14 + bx * 0.15;
-      idealY = 4.5;
-      idealZ = bz * 0.85;
-      lookY = 0.8;
-      this.camera.fov = 55;
-    } else {
-      idealX = bx * 0.45;
-      idealY = 7.5 + Math.min(speed * 0.15, 2.5);
-      idealZ = bz * 0.55 + 11;
-      lookY = 0.6 + Math.min(speed * 0.02, 0.4);
-      this.camera.fov = 58;
-    }
-    this.camera.updateProjectionMatrix();
+    const idealX = 15 + Math.min(Math.abs(bx) * 0.08, 1.5);
+    const idealY = 4.8 + Math.min(speed * 0.08, 1.2);
+    const idealZ = bz * 0.92;
 
     this._camIdeal.set(idealX, idealY, idealZ);
-    this.camera.position.lerp(this._camIdeal, 1 - Math.exp(-2.8 * dt));
+    this.camera.position.lerp(this._camIdeal, 1 - Math.exp(-3.2 * dt));
 
-    const look = new THREE.Vector3(bx * 0.9, lookY, bz * 0.85);
-    this._lookTarget.lerp(look, 1 - Math.exp(-4 * dt));
+    const look = new THREE.Vector3(bx * 0.55, 0.9, bz * 0.95);
+    this._lookTarget.lerp(look, 1 - Math.exp(-4.5 * dt));
     this.camera.lookAt(this._lookTarget);
   }
 
