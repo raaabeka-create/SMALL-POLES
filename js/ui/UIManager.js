@@ -41,6 +41,9 @@ export class UIManager {
     this.mobileControls = document.getElementById('mobile-controls');
     this.loadingFill = document.getElementById('loading-fill');
     this.loadingText = document.getElementById('loading-text');
+    this.powerBar = document.getElementById('power-bar');
+    this.powerFill = document.getElementById('power-fill');
+    this.possessionHint = document.getElementById('possession-hint');
   }
 
   _bindButtons() {
@@ -52,9 +55,7 @@ export class UIManager {
     });
   }
 
-  on(action, fn) {
-    this.callbacks[action] = fn;
-  }
+  on(action, fn) { this.callbacks[action] = fn; }
 
   _buildSelectUI() {
     const grid = document.getElementById('venue-grid');
@@ -62,7 +63,7 @@ export class UIManager {
     VENUES.forEach(v => {
       const card = document.createElement('div');
       card.className = 'venue-card' + (v.id === this.selectedVenue ? ' selected' : '');
-      card.innerHTML = `<strong>${v.name}</strong><span>${v.desc}</span>`;
+      card.innerHTML = '<strong>' + v.name + '</strong><span>' + v.desc + '</span>';
       card.addEventListener('click', () => {
         this.selectedVenue = v.id;
         grid.querySelectorAll('.venue-card').forEach(c => c.classList.remove('selected'));
@@ -70,7 +71,6 @@ export class UIManager {
       });
       grid.appendChild(card);
     });
-
     const row = document.getElementById('team-colours');
     row.innerHTML = '';
     COLOURS.forEach((c, i) => {
@@ -88,7 +88,7 @@ export class UIManager {
   }
 
   setLoadingProgress(p, text) {
-    if (this.loadingFill) this.loadingFill.style.width = `${Math.round(p * 100)}%`;
+    if (this.loadingFill) this.loadingFill.style.width = Math.round(p * 100) + '%';
     if (this.loadingText && text) this.loadingText.textContent = text;
   }
 
@@ -117,13 +117,26 @@ export class UIManager {
     this.awayScore.textContent = away;
   }
 
-  updateTimer(str) {
-    this.timer.textContent = str;
-  }
+  updateTimer(str) { this.timer.textContent = str; }
 
   updateStamina(v) {
-    this.staminaFill.style.width = `${Math.round(v * 100)}%`;
+    this.staminaFill.style.width = Math.round(v * 100) + '%';
     this.staminaFill.classList.toggle('low', v < 0.25);
+  }
+
+  updatePower(charge) {
+    if (!this.powerBar) return;
+    if (charge > 0.05) {
+      this.powerBar.classList.remove('hidden');
+      this.powerFill.style.width = Math.min(100, Math.round(charge * 100)) + '%';
+    } else {
+      this.powerBar.classList.add('hidden');
+      this.powerFill.style.width = '0%';
+    }
+  }
+
+  setPossession(text) {
+    if (this.possessionHint) this.possessionHint.textContent = text || '';
   }
 
   showGoal(team) {
@@ -144,21 +157,16 @@ export class UIManager {
     if (home > away) title.textContent = 'Victory!';
     else if (away > home) title.textContent = 'Defeat';
     else title.textContent = 'Draw';
-
     const grid = document.getElementById('match-stats');
-    grid.innerHTML = `
-      <div class="stat-item"><span>Home Goals</span>${home}</div>
-      <div class="stat-item"><span>Away Goals</span>${away}</div>
-      <div class="stat-item"><span>Shots</span>${stats.homeShots + stats.awayShots}</div>
-      <div class="stat-item"><span>Duration</span>3:00</div>
-    `;
+    grid.innerHTML =
+      '<div class="stat-item"><span>Home Goals</span>' + home + '</div>' +
+      '<div class="stat-item"><span>Away Goals</span>' + away + '</div>' +
+      '<div class="stat-item"><span>Shots</span>' + (stats.homeShots + stats.awayShots) + '</div>' +
+      '<div class="stat-item"><span>Duration</span>3:00</div>';
     this.showScreen('result');
   }
 
   getSelection() {
-    return {
-      venue: this.selectedVenue,
-      colour: this.selectedColour.hex,
-    };
+    return { venue: this.selectedVenue, colour: this.selectedColour.hex };
   }
 }
