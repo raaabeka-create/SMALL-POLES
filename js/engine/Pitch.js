@@ -124,14 +124,15 @@ export class Pitch {
     }
   }
 
+  /** Home attacks -Z, Away attacks +Z */
   checkGoal(ball) {
     const x = ball.position.x;
     const y = ball.position.y;
     const z = ball.position.z;
     const gw = this.goalWidth / 2;
-    const gh = 2.1;
-    if (z > this.depth / 2 - 0.3 && Math.abs(x) < gw && y < gh) return 0;
-    if (z < -this.depth / 2 + 0.3 && Math.abs(x) < gw && y < gh) return 1;
+    const gh = 2.2;
+    if (z < -this.depth / 2 + 0.2 && Math.abs(x) < gw && y < gh) return 0;
+    if (z > this.depth / 2 - 0.2 && Math.abs(x) < gw && y < gh) return 1;
     return -1;
   }
 }
