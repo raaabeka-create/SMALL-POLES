@@ -1,14 +1,16 @@
 import * as THREE from 'three';
 import { clamp, distance2, damp } from '../utils/math.js';
 
-const WALK_SPEED = 5.2;
-const SPRINT_SPEED = 8.4;
-const ACCEL = 18;
-const TURN_SPEED = 10;
-const STAMINA_DRAIN = 0.28;
-const STAMINA_RECOVER = 0.22;
-const TACKLE_RANGE = 1.1;
-const CONTROL_RANGE = 0.85;
+const WALK_SPEED = 5.8;
+const SPRINT_SPEED = 9.2;
+const ACCEL = 22;
+const DECEL = 28;
+const TURN_SPEED = 12;
+const STAMINA_DRAIN = 0.26;
+const STAMINA_RECOVER = 0.24;
+const TACKLE_RANGE = 1.25;
+const CONTROL_RANGE = 1.0;
+const DRIBBLE_SPEED_MUL = 0.82;
 
 let playerIdCounter = 0;
 
@@ -66,51 +68,84 @@ export class Player {
     this.tackleTimer = Math.max(0, this.tackleTimer - dt);
     if (this.isHuman) this._humanControl(dt, input, ball, pitch, teammates);
     else this._aiControl(dt, ball, pitch, teammates, opponents);
+
     this.position.x += this.velocity.x * dt;
     this.position.z += this.velocity.z * dt;
-    const hw = pitch.width / 2 - 0.4, hd = pitch.depth / 2 - 0.4;
+    const hw = pitch.width / 2 - 0.4;
+    const hd = pitch.depth / 2 - 0.4;
     this.position.x = clamp(this.position.x, -hw, hw);
     this.position.z = clamp(this.position.z, -hd, hd);
-    if (this.speed > 0.3) {
+
+    if (this.speed > 0.25) {
       const targetFacing = Math.atan2(this.velocity.x, this.velocity.z);
       let diff = targetFacing - this.facing;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
       this.facing += clamp(diff, -TURN_SPEED * dt, TURN_SPEED * dt);
     }
+
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.facing;
     this._animate(dt);
+
     if (!ball.owner && this.actionCooldown <= 0) {
       const d = ball.distanceTo(this.position.x, this.position.z);
-      if (d < CONTROL_RANGE && ball.onGround) { ball.setOwner(this); this.hasBall = true; }
+      const canControl = ball.onGround || ball.position.y < 0.6;
+      if (d < CONTROL_RANGE && canControl) {
+        const ballSpeed = Math.hypot(ball.velocity.x, ball.velocity.z);
+        if (ballSpeed < 12 || d < CONTROL_RANGE * 0.55) {
+          ball.setOwner(this);
+          this.hasBall = true;
+        }
+      }
     } else if (ball.owner === this) this.hasBall = true;
     else this.hasBall = false;
   }
 
   _humanControl(dt, input, ball, pitch, teammates = []) {
-    const mx = input.moveX, mz = input.moveZ;
-    const moving = Math.hypot(mx, mz) > 0.1;
+    const mx = input.moveX;
+    const mz = input.moveZ;
+    const moving = Math.hypot(mx, mz) > 0.08;
     const wantSprint = input.sprint && this.stamina > 0.05;
+
     let targetSpeed = 0;
     if (moving) {
       targetSpeed = wantSprint ? SPRINT_SPEED : WALK_SPEED;
-      if (wantSprint) { this.stamina = Math.max(0, this.stamina - STAMINA_DRAIN * dt); this.state = 'sprint'; }
-      else { this.state = 'run'; this.stamina = Math.min(1, this.stamina + STAMINA_RECOVER * dt * 0.5); }
-    } else { this.state = 'idle'; this.stamina = Math.min(1, this.stamina + STAMINA_RECOVER * dt); }
-    this.velocity.x = damp(this.velocity.x, mx * targetSpeed, ACCEL * 0.6, dt);
-    this.velocity.z = damp(this.velocity.z, mz * targetSpeed, ACCEL * 0.6, dt);
+      if (this.hasBall) targetSpeed *= DRIBBLE_SPEED_MUL;
+      if (wantSprint) {
+        this.stamina = Math.max(0, this.stamina - STAMINA_DRAIN * dt);
+        this.state = 'sprint';
+      } else {
+        this.state = 'run';
+        this.stamina = Math.min(1, this.stamina + STAMINA_RECOVER * dt * 0.5);
+      }
+    } else {
+      this.state = 'idle';
+      this.stamina = Math.min(1, this.stamina + STAMINA_RECOVER * dt);
+    }
+
+    const desiredVx = mx * targetSpeed;
+    const desiredVz = mz * targetSpeed;
+    const speedingUp = Math.hypot(desiredVx, desiredVz) > Math.hypot(this.velocity.x, this.velocity.z);
+    const rate = speedingUp ? ACCEL : DECEL;
+    this.velocity.x = damp(this.velocity.x, desiredVx, rate, dt);
+    this.velocity.z = damp(this.velocity.z, desiredVz, rate, dt);
     this.speed = Math.hypot(this.velocity.x, this.velocity.z);
+
     if (this.hasBall && ball.owner === this) {
       if (input.consume('pass') && this.actionCooldown <= 0) this._doPass(ball, teammates);
       if (!input.shoot && this._wasShooting && this.actionCooldown <= 0) {
-        this._doShoot(ball, Math.max(0.25, this._shootCharge || 0.4));
+        const power = Math.max(0.3, Math.min(1.2, this._shootCharge || 0.45));
+        this._doShoot(ball, power);
         this._shootCharge = 0;
       }
-      if (input.shoot) { this._wasShooting = true; this._shootCharge = input.shootHeld; }
-      else this._wasShooting = false;
+      if (input.shoot) {
+        this._wasShooting = true;
+        this._shootCharge = input.shootHeld;
+      } else this._wasShooting = false;
     } else {
-      this._wasShooting = false; this._shootCharge = 0;
+      this._wasShooting = false;
+      this._shootCharge = 0;
       if (input.consume('tackle') && this.actionCooldown <= 0) this._doTackle(ball);
     }
   }
@@ -204,8 +239,8 @@ export class Player {
     const spd = (wantSprint && this.stamina > 0.1) ? SPRINT_SPEED * 0.92 : WALK_SPEED * 0.95;
     if (wantSprint) this.stamina = Math.max(0, this.stamina - STAMINA_DRAIN * dt * 0.7);
     else this.stamina = Math.min(1, this.stamina + STAMINA_RECOVER * dt);
-    this.velocity.x = damp(this.velocity.x, (dx / dist) * spd, ACCEL * 0.5, dt);
-    this.velocity.z = damp(this.velocity.z, (dz / dist) * spd, ACCEL * 0.5, dt);
+    this.velocity.x = damp(this.velocity.x, (dx / dist) * spd, ACCEL * 0.55, dt);
+    this.velocity.z = damp(this.velocity.z, (dz / dist) * spd, ACCEL * 0.55, dt);
     this.speed = Math.hypot(this.velocity.x, this.velocity.z);
     this.state = this.speed > 6 ? 'sprint' : this.speed > 1 ? 'run' : 'idle';
   }
