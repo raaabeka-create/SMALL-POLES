@@ -4,28 +4,26 @@ import { Ball } from '../entities/Ball.js';
 const MATCH_DURATION = 180;
 
 export class MatchManager {
-  constructor(sceneManager, input) {
+  constructor(sceneManager, input, audio = null) {
     this.scene = sceneManager;
     this.input = input;
+    this.audio = audio;
     this.players = [];
     this.ball = null;
     this.pitch = null;
-
     this.homeScore = 0;
     this.awayScore = 0;
     this.timeLeft = MATCH_DURATION;
     this.running = false;
     this.paused = false;
     this.goalLock = 0;
-    this.stats = {
-      homeShots: 0, awayShots: 0,
-      homePasses: 0, awayPasses: 0,
-      homeTackles: 0, awayTackles: 0,
-    };
-
+    this._kickFx = false;
+    this.stats = { homeShots: 0, awayShots: 0, homePasses: 0, awayPasses: 0, homeTackles: 0, awayTackles: 0 };
     this.onGoal = null;
     this.onMatchEnd = null;
     this.onScoreUpdate = null;
+    this.onKick = null;
+    this.onPass = null;
     this.humanTeam = 0;
     this.teamColour = 0x00a86b;
   }
@@ -39,16 +37,14 @@ export class MatchManager {
     this.running = true;
     this.paused = false;
     this.goalLock = 0;
+    this._kickFx = false;
     this.stats = { homeShots: 0, awayShots: 0, homePasses: 0, awayPasses: 0, homeTackles: 0, awayTackles: 0 };
 
-    this.players.forEach(p => {
-      if (p.mesh) this.scene.scene.remove(p.mesh);
-    });
+    this.players.forEach(p => { if (p.mesh) this.scene.scene.remove(p.mesh); });
     if (this.ball && this.ball.mesh) {
       this.scene.scene.remove(this.ball.mesh);
       this.scene.scene.remove(this.ball.shadow);
     }
-
     this.ball = new Ball(this.scene.scene);
     this._spawnPlayers();
     this._kickoff();
@@ -58,7 +54,6 @@ export class MatchManager {
     this.players = [];
     const homeCol = this.teamColour;
     const awayCol = 0xc41e3a;
-
     const homePositions = [
       { x: 0, z: 6, num: 10, human: true },
       { x: -4, z: 9, num: 7 },
@@ -69,7 +64,6 @@ export class MatchManager {
       { x: -4, z: -9, num: 8 },
       { x: 4, z: -9, num: 11 },
     ];
-
     for (const p of homePositions) {
       this.players.push(new Player(this.scene.scene, {
         team: 0, isHuman: !!p.human, number: p.num,
@@ -114,7 +108,6 @@ export class MatchManager {
 
   update(dt) {
     if (!this.running || this.paused) return;
-
     this.timeLeft -= dt;
     if (this.timeLeft <= 0) {
       this.timeLeft = 0;
@@ -122,12 +115,10 @@ export class MatchManager {
       if (this.onMatchEnd) this.onMatchEnd(this.homeScore, this.awayScore, this.stats);
       return;
     }
-
     this.goalLock = Math.max(0, this.goalLock - dt);
 
     const homeTeam = this.players.filter(p => p.team === 0);
     const awayTeam = this.players.filter(p => p.team === 1);
-
     for (const p of this.players) {
       const teammates = p.team === 0 ? homeTeam : awayTeam;
       const opponents = p.team === 0 ? awayTeam : homeTeam;
@@ -135,6 +126,16 @@ export class MatchManager {
     }
 
     this.ball.update(dt, this.pitch, this.players);
+
+    const human = this.players.find(p => p.isHuman);
+    if (human && human.state === 'kick' && human.actionCooldown > 0.4) {
+      if (!this._kickFx) {
+        this._kickFx = true;
+        if (this.onKick) this.onKick(0.7);
+      }
+    } else if (human && human.state !== 'kick') {
+      this._kickFx = false;
+    }
 
     if (this.goalLock <= 0) {
       const scorer = this.pitch.checkGoal(this.ball);
@@ -152,7 +153,6 @@ export class MatchManager {
         setTimeout(() => this._kickoff(), 2200);
       }
     }
-
     this.scene.updateCamera(this.ball, this.players, dt);
   }
 
@@ -166,9 +166,25 @@ export class MatchManager {
     return h ? h.stamina : 1;
   }
 
+  getShootCharge() {
+    const h = this.players.find(p => p.isHuman);
+    if (!h || !h.hasBall) return 0;
+    return this.input.shootHeld || 0;
+  }
+
+  getPossessionText() {
+    if (!this.ball) return '';
+    if (this.ball.owner) {
+      if (this.ball.owner.isHuman) return 'YOU HAVE THE BALL — Pass J · Shoot K';
+      if (this.ball.owner.team === 0) return 'TEAM MATE ON THE BALL';
+      return 'OPPONENT POSSESSION — Tackle L';
+    }
+    return 'LOOSE BALL';
+  }
+
   getTimeString() {
     const m = Math.floor(this.timeLeft / 60);
     const s = Math.floor(this.timeLeft % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return m + ':' + s.toString().padStart(2, '0');
   }
 }
