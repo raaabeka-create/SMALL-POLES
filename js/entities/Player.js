@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 import { clamp, distance2, damp } from '../utils/math.js';
 
-const WALK_SPEED = 6.2;
-const SPRINT_SPEED = 9.8;
-const ACCEL = 26;
-const DECEL = 32;
-const TURN_SPEED = 14;
-const STAMINA_DRAIN = 0.24;
-const STAMINA_RECOVER = 0.28;
-const TACKLE_RANGE = 1.45;
-const CONTROL_RANGE = 1.05;
-const DRIBBLE_SPEED_MUL = 0.88;
+const WALK_SPEED = 5.6;
+const SPRINT_SPEED = 9.0;
+const ACCEL = 20;
+const DECEL = 26;
+const TURN_SPEED = 10;
+const STAMINA_DRAIN = 0.32;
+const STAMINA_RECOVER = 0.22;
+const TACKLE_RANGE = 1.35;
+const CONTROL_RANGE = 0.95;
+const DRIBBLE_SPEED_MUL = 0.78;
 
 let playerIdCounter = 0;
 
@@ -81,7 +81,9 @@ export class Player {
       let diff = targetFacing - this.facing;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      this.facing += clamp(diff, -TURN_SPEED * dt, TURN_SPEED * dt);
+      const turnMul = this.state === 'sprint' ? 0.55 : (this.hasBall ? 0.75 : 1);
+      const maxTurn = TURN_SPEED * turnMul * dt;
+      this.facing += clamp(diff, -maxTurn, maxTurn);
     }
 
     this.mesh.position.copy(this.position);
@@ -90,12 +92,16 @@ export class Player {
 
     if (!ball.owner && this.actionCooldown <= 0) {
       const d = ball.distanceTo(this.position.x, this.position.z);
-      const canControl = ball.onGround || ball.position.y < 0.6;
+      const canControl = ball.onGround || ball.position.y < 0.55;
       if (d < CONTROL_RANGE && canControl) {
         const ballSpeed = Math.hypot(ball.velocity.x, ball.velocity.z);
-        if (ballSpeed < 12 || d < CONTROL_RANGE * 0.55) {
+        const maxControllable = 8 + this.stamina * 3;
+        if (ballSpeed < maxControllable || d < CONTROL_RANGE * 0.4) {
           ball.setOwner(this);
           this.hasBall = true;
+        } else if (d < CONTROL_RANGE * 0.7 && ballSpeed < 14) {
+          const ang = Math.atan2(ball.position.x - this.position.x, ball.position.z - this.position.z);
+          ball.kick(Math.sin(ang + (Math.random() - 0.5) * 0.8), Math.cos(ang), 2 + Math.random() * 3, 0.4);
         }
       }
     } else if (ball.owner === this) this.hasBall = true;
@@ -107,25 +113,19 @@ export class Player {
     const mz = input.moveZ;
     const moving = Math.hypot(mx, mz) > 0.08;
     const wantSprint = input.sprint && this.stamina > 0.05;
-
     let targetSpeed = 0;
     if (moving) {
       targetSpeed = wantSprint ? SPRINT_SPEED : WALK_SPEED;
       if (this.hasBall) targetSpeed *= DRIBBLE_SPEED_MUL;
-      if (wantSprint) {
-        this.stamina = Math.max(0, this.stamina - STAMINA_DRAIN * dt);
-        this.state = 'sprint';
-      } else {
-        this.state = 'run';
-        this.stamina = Math.min(1, this.stamina + STAMINA_RECOVER * dt * 0.5);
-      }
+      if (wantSprint) { this.stamina = Math.max(0, this.stamina - STAMINA_DRAIN * dt); this.state = 'sprint'; }
+      else { this.state = 'run'; this.stamina = Math.min(1, this.stamina + STAMINA_RECOVER * dt * 0.5); }
     } else {
       this.state = 'idle';
       this.stamina = Math.min(1, this.stamina + STAMINA_RECOVER * dt);
     }
-
-    const desiredVx = mx * targetSpeed;
-    const desiredVz = mz * targetSpeed;
+    const staminaMul = 0.55 + this.stamina * 0.45;
+    const desiredVx = mx * targetSpeed * staminaMul;
+    const desiredVz = mz * targetSpeed * staminaMul;
     const speedingUp = Math.hypot(desiredVx, desiredVz) > Math.hypot(this.velocity.x, this.velocity.z);
     const rate = speedingUp ? ACCEL : DECEL;
     this.velocity.x = damp(this.velocity.x, desiredVx, rate, dt);
@@ -139,20 +139,16 @@ export class Player {
         this._doShoot(ball, power, pitch);
         this._shootCharge = 0;
       }
-      if (input.shoot) {
-        this._wasShooting = true;
-        this._shootCharge = input.shootHeld;
-      } else this._wasShooting = false;
+      if (input.shoot) { this._wasShooting = true; this._shootCharge = input.shootHeld; }
+      else this._wasShooting = false;
     } else {
-      this._wasShooting = false;
-      this._shootCharge = 0;
+      this._wasShooting = false; this._shootCharge = 0;
       if (input.consume('tackle') && this.actionCooldown <= 0) this._doTackle(ball);
     }
   }
 
   _doPass(ball, teammates = []) {
-    let best = null;
-    let bestScore = -9999;
+    let best = null, bestScore = -9999;
     for (const t of teammates) {
       if (t === this) continue;
       const d = distance2(this.position.x, this.position.z, t.position.x, t.position.z);
@@ -161,9 +157,8 @@ export class Player {
       const score = progress * 2 - d * 0.3;
       if (score > bestScore) { bestScore = score; best = t; }
     }
-    if (best) {
-      this.passTo(ball, best.position.x + best.velocity.x * 0.25, best.position.z + best.velocity.z * 0.25);
-    } else {
+    if (best) this.passTo(ball, best.position.x + best.velocity.x * 0.25, best.position.z + best.velocity.z * 0.25);
+    else {
       ball.kick(Math.sin(this.facing), Math.cos(this.facing), 13, 0.7);
       this.hasBall = false; this.actionCooldown = 0.3; this.state = 'kick';
     }
@@ -174,21 +169,25 @@ export class Player {
     let dirZ = Math.cos(this.facing);
     if (pitch) {
       const goalZ = this.team === 0 ? -pitch.depth / 2 : pitch.depth / 2;
-      const toGoalX = 0 - this.position.x;
+      const toGoalX = -this.position.x;
       const toGoalZ = goalZ - this.position.z;
       const glen = Math.hypot(toGoalX, toGoalZ) || 1;
-      const gx = toGoalX / glen;
-      const gz = toGoalZ / glen;
+      const gx = toGoalX / glen, gz = toGoalZ / glen;
       const align = dirX * gx + dirZ * gz;
-      if (align > 0.15) {
-        const assist = 0.35 + Math.min(0.35, power * 0.15);
+      if (align > 0.25) {
+        const assist = 0.18 + Math.min(0.2, power * 0.08);
         dirX = dirX * (1 - assist) + gx * assist;
         dirZ = dirZ * (1 - assist) + gz * assist;
         const n = Math.hypot(dirX, dirZ) || 1;
         dirX /= n; dirZ /= n;
       }
     }
-    ball.kick(dirX, dirZ, 11 + power * 17, 1.2 + power * 2.8);
+    const spray = (1 - this.stamina) * 0.12 + Math.max(0, power - 0.7) * 0.15;
+    dirX += (Math.random() - 0.5) * spray;
+    dirZ += (Math.random() - 0.5) * spray;
+    const n2 = Math.hypot(dirX, dirZ) || 1;
+    dirX /= n2; dirZ /= n2;
+    ball.kick(dirX, dirZ, 10 + power * 16, 1.0 + power * 2.4, (Math.random() - 0.5) * spray * 2);
     this.hasBall = false; this.actionCooldown = 0.45; this.state = 'kick';
   }
 
@@ -241,10 +240,9 @@ export class Player {
       targetX = ballPos.x * 0.25; targetZ = goalZ * 0.75;
       wantSprint = Math.abs(this.position.z - goalZ) > 5;
       if (this.actionCooldown <= 0) {
-        const toGoal = Math.abs(this.position.z - goalZ);
-        if (toGoal < 11 && Math.random() < 0.09) {
+        if (Math.abs(this.position.z - goalZ) < 11 && Math.random() < 0.09)
           this.shootAt(ball, (Math.random() - 0.5) * 2.2, goalZ, 0.8 + Math.random() * 0.2);
-        } else if (Math.random() < 0.05 && teammates.length > 1) {
+        else if (Math.random() < 0.05 && teammates.length > 1) {
           let best = null, bestScore = -999;
           for (const t of teammates) {
             if (t === this) continue;
