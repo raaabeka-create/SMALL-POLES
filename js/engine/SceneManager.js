@@ -14,11 +14,11 @@ export class SceneManager {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.25;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87a0b8);
-    this.scene.fog = new THREE.FogExp2(0x87a0b8, 0.018);
+    this.scene.fog = new THREE.FogExp2(0x87a0b8, 0.012);
 
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
     this.camera.position.set(16, 5, 0);
@@ -34,9 +34,7 @@ export class SceneManager {
   }
 
   _setupLights() {
-    const amb = new THREE.AmbientLight(0xb0c4de, 0.55);
-    this.scene.add(amb);
-
+    this.scene.add(new THREE.AmbientLight(0xb0c4de, 0.55));
     const sun = new THREE.DirectionalLight(0xfff0dd, 1.35);
     sun.position.set(12, 28, 10);
     sun.castShadow = true;
@@ -50,21 +48,15 @@ export class SceneManager {
     sun.shadow.bias = -0.0005;
     this.scene.add(sun);
     this.sun = sun;
-
     const fill = new THREE.DirectionalLight(0xffaa66, 0.25);
     fill.position.set(-8, 6, -5);
     this.scene.add(fill);
-
-    const hemi = new THREE.HemisphereLight(0x88aacc, 0x3a4a30, 0.4);
-    this.scene.add(hemi);
+    this.scene.add(new THREE.HemisphereLight(0x88aacc, 0x3a4a30, 0.4));
   }
 
   loadVenue(venueId) {
-    if (this.pitch) {
-      this.scene.remove(this.pitch.group);
-    }
+    if (this.pitch) this.scene.remove(this.pitch.group);
     this.pitch = new Pitch(this.scene, venueId);
-
     if (venueId === 'jamestown') {
       this.scene.background.set(0x9ab0c0);
       this.scene.fog.color.set(0x9ab0c0);
@@ -78,23 +70,25 @@ export class SceneManager {
     return this.pitch;
   }
 
-  /** Fixed sideline camera — tracks play along the touchline */
+  /** Sideline camera: ball velocity lead + human player bias */
   updateCamera(ball, players, dt) {
     if (!ball) return;
-
-    const bx = ball.position.x;
-    const bz = ball.position.z;
+    let focusX = ball.position.x + ball.velocity.x * 0.18;
+    let focusZ = ball.position.z + ball.velocity.z * 0.18;
+    const human = players && players.find((pl) => pl.isHuman);
+    if (human) {
+      focusX = focusX * 0.72 + human.position.x * 0.28;
+      focusZ = focusZ * 0.72 + human.position.z * 0.28;
+    }
     const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
-
-    const idealX = 15 + Math.min(Math.abs(bx) * 0.08, 1.5);
-    const idealY = 4.8 + Math.min(speed * 0.08, 1.2);
-    const idealZ = bz * 0.92;
-
-    this._camIdeal.set(idealX, idealY, idealZ);
-    this.camera.position.lerp(this._camIdeal, 1 - Math.exp(-3.2 * dt));
-
-    const look = new THREE.Vector3(bx * 0.55, 0.9, bz * 0.95);
-    this._lookTarget.lerp(look, 1 - Math.exp(-4.5 * dt));
+    this._camIdeal.set(
+      14.5 + Math.min(Math.abs(focusX) * 0.1, 2),
+      4.5 + Math.min(speed * 0.06, 1.0),
+      focusZ * 0.88
+    );
+    this.camera.position.lerp(this._camIdeal, 1 - Math.exp(-5.5 * dt));
+    const look = new THREE.Vector3(focusX * 0.5, 0.85, focusZ * 0.92);
+    this._lookTarget.lerp(look, 1 - Math.exp(-6.5 * dt));
     this.camera.lookAt(this._lookTarget);
   }
 
