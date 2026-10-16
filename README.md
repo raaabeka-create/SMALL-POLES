@@ -1,41 +1,46 @@
-# SMALL POLES — Street Football
+# SMALL POLES
 
-A browser-based 3v3 street-football game inspired by Ghanaian urban football culture.
+3v3 Ghanaian street-football in the browser (Three.js).
 
 ## Play
 
-Open `index.html` in a modern browser, or serve locally:
+**https://raaabeka-create.github.io/SMALL-POLES/**
 
-```bash
-npx serve .
-python -m http.server 8080
-```
-
-### GitHub Pages
-
-Source: **GitHub Actions** (`.github/workflows/deploy-pages.yml`).
-
-Live: https://raaabeka-create.github.io/SMALL-POLES/
+Or serve locally: `npx serve .` then open the URL shown.
 
 ## Controls
 
-| Key | Action |
-|-----|--------|
-| WASD / Arrows | Move |
-| Shift | Sprint |
-| J | Pass |
-| K | Shoot (hold for power) |
-| L | Tackle |
-| Esc | Pause |
+| Action | Keyboard | Mobile |
+|--------|----------|--------|
+| Move | WASD / Arrows | Joystick |
+| Sprint | Shift | Sprint |
+| Pass | **J** or **E** | Pass |
+| Shoot (hold power) | **K** or **Space** | Shoot |
+| Tackle | **L** or **F** | Tackle |
+| Pause | Esc | Pause |
+| Restart | HUD button | HUD |
 
-## Architecture
+## What's included
+
+- Full match loop: menu → venue/kit select → 3v3 match → goals → full-time → rematch
+- Sideline camera tracking the ball
+- Ball physics: gravity, bounce, friction, spin, player collisions
+- Human control + AI opponents/teammates
+- Three venues (Accra, Jamestown, Kumasi) and team colours
+- Scoreboard, timer, stamina, pause/restart
+- Mobile touch controls
+
+## Project layout
 
 ```
-js/engine/   SceneManager, Pitch
-js/entities/ Player, Ball
-js/systems/  MatchManager
-js/ui/       UIManager
-js/utils/    input, math
+index.html
+css/main.css
+js/main.js
+js/engine/   SceneManager.js, Pitch.js
+js/entities/ Player.js, Ball.js
+js/systems/  MatchManager.js
+js/ui/       UIManager.js
+js/utils/    input.js, math.js
 ```
 
-Three.js via CDN import map. No build step.
+No build step — ES modules + Three.js CDN.
